@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="purple_200">#FF9BB7FF</color>
+    <color name="purple_500">#FF1E88E5</color>
+    <color name="purple_700">#FF1565C0</color>
+    <color name="teal_200">#FF4DD0E1</color>
+    <color name="teal_700">#FF00838F</color>
+    <color name="trip_primary_dark">#FF0D47A1</color>
+    <color name="trip_background">#FFF5F7FB</color>
+    <color name="trip_surface">#FFFFFFFF</color>
+    <color name="trip_on_surface">#FF1D2433</color>
+    <color name="trip_success">#FF2E7D32</color>
+    <color name="trip_warning">#FFF9A825</color>
+    <color name="trip_error">#FFC62828</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>
