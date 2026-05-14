@@ -1,0 +1,22 @@
+require('dotenv').config();
+
+module.exports = {
+  presets: ['module:@react-native/babel-preset'],
+  plugins: [
+    [
+      'transform-inline-environment-variables',
+      {
+        include: [
+          'FIREBASE_API_KEY',
+          'FIREBASE_AUTH_DOMAIN',
+          'FIREBASE_PROJECT_ID',
+          'FIREBASE_STORAGE_BUCKET',
+          'FIREBASE_MESSAGING_SENDER_ID',
+          'FIREBASE_APP_ID',
+          'GOOGLE_MAPS_API_KEY',
+          'OPENWEATHER_API_KEY',
+        ],
+      },
+    ],
+  ],
+};
