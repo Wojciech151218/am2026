@@ -35,6 +35,10 @@ local.properties
 !debug.keystore
 .kotlin/
 
+# Web / bundler output
+#
+dist/
+
 # node.js
 #
 node_modules/
