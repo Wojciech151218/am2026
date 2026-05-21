@@ -2,8 +2,24 @@ import React from 'react';
 import {ActivityIndicator, StyleSheet, Text, View} from 'react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import FirebaseAuthCard from './src/components/FirebaseAuthCard';
+import {DbProvider, useDb} from './src/hooks/db/useDb';
 import {useFirebaseAuth} from './src/hooks/useFirebaseAuth';
 import AppTabs from './src/navigation';
+
+function AuthenticatedApp() {
+  const db = useDb();
+
+  if (!db.ready) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="small" color="#2563EB" />
+        <Text style={styles.helper}>Preparing local database...</Text>
+      </View>
+    );
+  }
+
+  return <AppTabs />;
+}
 
 function App() {
   const auth = useFirebaseAuth();
@@ -17,7 +33,9 @@ function App() {
             <Text style={styles.helper}>Checking account...</Text>
           </View>
         ) : auth.user ? (
-          <AppTabs />
+          <DbProvider user={auth.user}>
+            <AuthenticatedApp />
+          </DbProvider>
         ) : (
           <View style={styles.authScreen}>
             <Text style={styles.title}>Sign in to continue</Text>

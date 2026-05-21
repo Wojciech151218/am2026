@@ -3,23 +3,31 @@ import {Alert, ScrollView, StyleSheet, Text, View} from 'react-native';
 import FriendList from '../components/FriendList';
 import SearchBar from '../components/SearchBar';
 import SearchResultList from '../components/SearchResultList';
+import {useFriendsQuery} from '../hooks/db/useFriendsQuery';
+import {useAddFriend} from '../hooks/mutations/useAddFriend';
 import {useFriendSearchApi} from '../hooks/useFriendSearchApi';
-import {useFriendsApi} from '../hooks/useFriendsApi';
 import {useSearchFilters} from '../hooks/useSearchFilters';
 import type {FriendSearchResult} from '../types/friend';
 
 function SocialScreen() {
   const [query, setQuery] = useState('');
   const friendSearchApi = useFriendSearchApi();
-  const friendsApi = useFriendsApi();
+  const friendsApi = useFriendsQuery();
+  const addFriendMutation = useAddFriend();
   const {filters} = useSearchFilters();
 
   const onSubmitFriendSearch = async () => {
     await friendSearchApi.executeSearch(query, filters);
   };
 
-  const onAddFriend = (friend: FriendSearchResult) => {
+  const onAddFriend = async (friend: FriendSearchResult) => {
+    const success = await addFriendMutation.addFriend(friend.id);
+    if (!success) {
+      Alert.alert('Unable to add friend', addFriendMutation.error ?? 'Try again later.');
+      return;
+    }
     Alert.alert('Friend request sent', `A request was sent to ${friend.title}.`);
+    await friendsApi.refetch();
   };
 
   return (
@@ -36,6 +44,7 @@ function SocialScreen() {
             placeholder="Search friends"
           />
           {friendSearchApi.loading ? <Text style={styles.status}>Searching people...</Text> : null}
+          {addFriendMutation.loading ? <Text style={styles.status}>Sending request...</Text> : null}
           <SearchResultList
             results={friendSearchApi.results}
             actionLabel="Add Friend"
@@ -48,6 +57,8 @@ function SocialScreen() {
           <Text style={styles.sectionTitle}>Friends list</Text>
           {friendsApi.loading ? (
             <Text style={styles.status}>Loading friends...</Text>
+          ) : friendsApi.error ? (
+            <Text style={styles.status}>{friendsApi.error}</Text>
           ) : (
             <FriendList friends={friendsApi.friends} />
           )}
@@ -79,10 +90,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#FFFFFF',
     padding: 12,
-    gap: 10,
+    gap: 8,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: '#0F172A',
   },
