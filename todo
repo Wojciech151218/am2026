@@ -1,0 +1,13 @@
+- firebase baza danych dziala wgl??
+- mapa powinna centrowac na twojej lokalizacji i przyblizac (dziala jesli lokalizacja sie wgrala)
+- lokalizacja dziwnie wczytuje i powoli 
+- kompas wyglonda do doopy maszynka nie podolala
+- lepsze kwerendy (preferuje hotele ? ) do szukania na mapie miejsc z gogla
+- logout i unfriend powinny miec ten sam styl 
+- zamiast powadomien telefonowych moze jakies Toasty lub Alerty
+- location tracking wyglada jakos dziwnie 
+- location histroy moglo by miec ladniejsze preview zamiast dokladnego polozenia moze label i date
+- ladowanie do aplikacji moglo by sie lepiej nazywac/ wygladac
+- blur container powinien byc bardziej elastyczny i lepiej wygladac ( nie wycentrowany ani )
+- mapa sie dziwnie odswieza ( moze po przebyciu jakiegos dystansu powinna sie odswiezac)
+- mapa po przeciagnieciu na preview sie zawsze rozszerza , gest przeciagania nie powinien rozszerzac mapy , tylko klikanie
