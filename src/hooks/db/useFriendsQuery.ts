@@ -1,6 +1,6 @@
 import {useCallback} from 'react';
 import {Platform} from 'react-native';
-import {fetchAcceptedAndPendingFriends} from '../../db/queries/friendsWithUsers';
+import {fetchFriendsWithUsers} from '../../db/queries/friendsWithUsers';
 import type {Friend} from '../../types/friend';
 import {useFriendsApi} from '../useFriendsApi';
 import {useDb} from './useDb';
@@ -21,7 +21,7 @@ export function useFriendsQuery(): UseFriendsQueryResult {
     if (!currentUserId) {
       return [];
     }
-    return fetchAcceptedAndPendingFriends(currentUserId);
+    return fetchFriendsWithUsers(currentUserId);
   }, [currentUserId]);
 
   const localQuery = useLocalQuery('friends', queryFn, [] as Friend[]);

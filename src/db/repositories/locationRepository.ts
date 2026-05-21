@@ -2,7 +2,6 @@ import {and, desc, eq, gte, lte} from 'drizzle-orm';
 import {locations, type LocationRow, type NewLocationRow} from '../../entities';
 import {getDatabase} from '../client';
 import {notifyDbChanged} from '../reactivity';
-import {updateCurrentCoordinates} from './userRepository';
 import {enqueueSyncMutation} from './syncQueueRepository';
 import {createId, nowIso} from '../utils';
 
@@ -61,12 +60,6 @@ export async function appendLocationSnapshot(input: AppendLocationInput): Promis
   };
 
   await db.insert(locations).values(row);
-  await updateCurrentCoordinates(input.userId, {
-    latitude: input.latitude,
-    longitude: input.longitude,
-    label: input.label,
-    updatedAtIso,
-  });
 
   await enqueueSyncMutation('postUserLocation', {
     userId: input.userId,

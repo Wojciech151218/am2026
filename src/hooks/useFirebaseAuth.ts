@@ -8,7 +8,6 @@ import {
   type User,
 } from 'firebase/auth';
 import {getFirebaseAuth} from '../firebase/auth';
-import {ensureUserProfile} from '../firebase/profile';
 
 type AuthAction = 'signIn' | 'signUp' | 'guest' | 'signOut';
 
@@ -43,9 +42,6 @@ export function useFirebaseAuth(): UseFirebaseAuthResult {
     const unsubscribe = onAuthStateChanged(
       auth,
       nextUser => {
-        if (nextUser) {
-          ensureUserProfile(nextUser).catch(() => null);
-        }
         setUser(nextUser);
         setLoading(false);
       },

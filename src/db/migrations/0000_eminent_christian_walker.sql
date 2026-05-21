@@ -31,11 +31,13 @@ CREATE TABLE `friendships` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_a_id` text NOT NULL,
 	`user_b_id` text NOT NULL,
+	`issued_by_id` text NOT NULL,
 	`status` text NOT NULL,
 	`created_at_iso` text NOT NULL,
 	`updated_at_iso` text NOT NULL,
 	FOREIGN KEY (`user_a_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`user_b_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
+	FOREIGN KEY (`user_b_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`issued_by_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
 CREATE INDEX `friendships_user_a_status_idx` ON `friendships` (`user_a_id`,`status`);--> statement-breakpoint

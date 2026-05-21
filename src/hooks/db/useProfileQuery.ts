@@ -6,6 +6,12 @@ import {useProfileApi} from '../useProfileApi';
 import {useDb} from './useDb';
 import {useLocalQuery} from './useLocalQuery';
 
+type UseProfileQueryOptions = {
+  userId?: string;
+  historyLimit?: number;
+  historyOffset?: number;
+};
+
 type UseProfileQueryResult = {
   profile: UserProfile | null;
   loading: boolean;
@@ -13,18 +19,25 @@ type UseProfileQueryResult = {
   refetch: () => Promise<void>;
 };
 
-export function useProfileQuery(userId?: string): UseProfileQueryResult {
-  const mockApi = useProfileApi(userId);
+export function useProfileQuery(options?: UseProfileQueryOptions): UseProfileQueryResult {
+  const mockApi = useProfileApi(options?.userId);
   const {currentUserId, isLocalDbEnabled, ready} = useDb();
+  const historyLimit = options?.historyLimit ?? 10;
+  const historyOffset = options?.historyOffset ?? 0;
 
   const queryFn = useCallback(async () => {
     if (!currentUserId) {
       return null;
     }
-    return fetchCurrentUserProfile(currentUserId, {viewedUserId: userId});
-  }, [currentUserId, userId]);
+    return fetchCurrentUserProfile(currentUserId, {
+      viewedUserId: options?.userId,
+      historyLimit,
+      historyOffset,
+    });
+  }, [currentUserId, options?.userId, historyLimit, historyOffset]);
 
-  const localQuery = useLocalQuery('profile', queryFn, null as UserProfile | null);
+  const queryKey = `profile:${options?.userId ?? 'me'}:${historyLimit}:${historyOffset}`;
+  const localQuery = useLocalQuery(queryKey, queryFn, null as UserProfile | null);
 
   if (Platform.OS === 'web' || !isLocalDbEnabled || !ready || !currentUserId) {
     return {

@@ -6,35 +6,57 @@ type SearchResultListProps<T extends SearchResult> = {
   results: T[];
   actionLabel?: string;
   onPressAction?: (item: T) => void;
+  onPressItem?: (item: T) => void;
   emptyText?: string;
+  /** Use inside a parent ScrollView to avoid nested VirtualizedList warnings. */
+  nested?: boolean;
 };
 
 function SearchResultList<T extends SearchResult>({
   results,
   actionLabel,
   onPressAction,
+  onPressItem,
   emptyText,
+  nested = false,
 }: SearchResultListProps<T>) {
+  const renderItem = (item: T) => (
+    <Pressable
+      key={item.id}
+      style={styles.card}
+      onPress={() => onPressItem?.(item)}
+      disabled={!onPressItem}>
+      <View style={styles.main}>
+        <Text style={styles.title}>{item.title}</Text>
+        <Text style={styles.subtitle}>{item.subtitle}</Text>
+        <Text style={styles.tags}>{item.tags.join(' • ')}</Text>
+      </View>
+      {actionLabel && onPressAction ? (
+        <Pressable style={styles.actionButton} onPress={() => onPressAction(item)}>
+          <Text style={styles.actionText}>{actionLabel}</Text>
+        </Pressable>
+      ) : null}
+    </Pressable>
+  );
+
+  if (nested) {
+    if (results.length === 0) {
+      return (
+        <View style={styles.emptyWrap}>
+          <Text style={styles.empty}>{emptyText ?? 'No results yet.'}</Text>
+        </View>
+      );
+    }
+    return <View style={styles.list}>{results.map(renderItem)}</View>;
+  }
+
   return (
     <FlatList
       data={results}
       keyExtractor={item => item.id}
       ListEmptyComponent={<Text style={styles.empty}>{emptyText ?? 'No results yet.'}</Text>}
       contentContainerStyle={results.length === 0 ? styles.emptyWrap : styles.list}
-      renderItem={({item}) => (
-        <View style={styles.card}>
-          <View style={styles.main}>
-            <Text style={styles.title}>{item.title}</Text>
-            <Text style={styles.subtitle}>{item.subtitle}</Text>
-            <Text style={styles.tags}>{item.tags.join(' • ')}</Text>
-          </View>
-          {actionLabel && onPressAction ? (
-            <Pressable style={styles.actionButton} onPress={() => onPressAction(item)}>
-              <Text style={styles.actionText}>{actionLabel}</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      )}
+      renderItem={({item}) => renderItem(item)}
     />
   );
 }

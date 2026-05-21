@@ -21,4 +21,5 @@ export type RecommendationItem = {
   id: string;
   title: string;
   description: string;
+  friendUserId?: string;
 };

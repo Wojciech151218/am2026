@@ -8,8 +8,9 @@ export type ProfileSettings = {
 
 export type UserProfile = {
   id: string;
-  displayName: string;
+  displayName: string | null;
   bio: string;
+  homeCity: string;
   isCurrentUser: boolean;
   settings: ProfileSettings;
   locationHistory: LocationHistoryItem[];

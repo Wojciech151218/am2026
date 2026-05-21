@@ -69,14 +69,36 @@ async function dispatchMutation(
         id: String(payload.friendshipId),
         userAId: String(payload.userAId),
         userBId: String(payload.userBId),
+        issuedById: String(payload.issuedById ?? payload.userAId),
         status: payload.status,
         createdAtIso: String(payload.createdAtIso),
         updatedAtIso: String(payload.updatedAtIso),
       });
       return;
     }
+    case 'acceptFriend': {
+      const friendshipDoc = getFriendshipDocument(String(payload.friendshipId));
+      if (!friendshipDoc) {
+        throw new Error('Firestore is not configured.');
+      }
+      await setDoc(
+        friendshipDoc,
+        {
+          id: String(payload.friendshipId),
+          userAId: String(payload.userAId),
+          userBId: String(payload.userBId),
+          issuedById: String(payload.issuedById),
+          status: payload.status,
+          createdAtIso: String(payload.createdAtIso),
+          updatedAtIso: String(payload.updatedAtIso),
+        },
+        {merge: true},
+      );
+      return;
+    }
     case 'toggleLocationTracking':
-    case 'updateUserProfile': {
+    case 'updateUserProfile':
+    case 'updateCurrentLocation': {
       const userId = String(payload.userId);
       const user = await getUserById(userId);
       if (!user) {

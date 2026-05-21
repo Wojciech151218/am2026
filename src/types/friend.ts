@@ -8,6 +8,15 @@ export type FriendSearchResult = SearchResult & {
 export type Friend = {
   id: string;
   name: string;
+  displayName: string | null;
+  bio: string;
+  homeCity: string;
   isOnline: boolean;
   sharedLocation?: SharedLocation;
+};
+
+export type IncomingFriendRequest = {
+  friendshipId: string;
+  id: string;
+  name: string;
 };

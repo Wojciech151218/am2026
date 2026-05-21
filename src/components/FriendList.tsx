@@ -1,37 +1,56 @@
 import React from 'react';
-import {FlatList, StyleSheet, Text, View} from 'react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 import type {Friend} from '../types/friend';
 
 type FriendListProps = {
   friends: Friend[];
+  emptyText?: string;
+  selectedFriendId?: string | null;
+  onSelectFriend?: (friend: Friend) => void;
 };
 
-function FriendList({friends}: FriendListProps) {
+function FriendList({
+  friends,
+  emptyText = 'No friends yet.',
+  selectedFriendId,
+  onSelectFriend,
+}: FriendListProps) {
+  if (friends.length === 0) {
+    return <Text style={styles.empty}>{emptyText}</Text>;
+  }
+
   return (
-    <FlatList
-      data={friends}
-      keyExtractor={item => item.id}
-      scrollEnabled={false}
-      contentContainerStyle={styles.list}
-      renderItem={({item}) => (
-        <View style={styles.card}>
-          <View style={styles.avatar} />
-          <View style={styles.textWrap}>
-            <Text style={styles.name}>{item.name}</Text>
-            <Text style={[styles.status, item.isOnline ? styles.online : styles.offline]}>
-              {item.isOnline ? 'Online' : 'Offline'}
-            </Text>
-            <Text style={styles.location}>
-              {item.sharedLocation ? item.sharedLocation.label : 'Location not shared'}
-            </Text>
-          </View>
-        </View>
-      )}
-    />
+    <View style={styles.list}>
+      {friends.map(item => {
+        const selected = item.id === selectedFriendId;
+        return (
+          <Pressable
+            key={item.id}
+            onPress={() => onSelectFriend?.(item)}
+            style={[styles.card, selected && styles.cardSelected]}
+            accessibilityRole="button">
+            <View style={styles.avatar} />
+            <View style={styles.textWrap}>
+              <Text style={styles.name}>{item.name}</Text>
+              <Text style={[styles.status, item.isOnline ? styles.online : styles.offline]}>
+                {item.isOnline ? 'Online' : 'Offline'}
+              </Text>
+              <Text style={styles.location}>
+                {item.sharedLocation ? item.sharedLocation.label : 'Location not shared'}
+              </Text>
+            </View>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  empty: {
+    fontSize: 12,
+    color: '#64748B',
+  },
   list: {
     gap: 10,
   },
@@ -44,6 +63,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  cardSelected: {
+    borderColor: '#2563EB',
+    backgroundColor: '#EFF6FF',
   },
   avatar: {
     width: 36,

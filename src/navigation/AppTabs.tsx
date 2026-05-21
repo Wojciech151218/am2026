@@ -1,7 +1,10 @@
 import React from 'react';
-import {Pressable, StyleSheet, View} from 'react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import BottomTabIcon from '../components/BottomTabIcon';
+import {useProfileQuery} from '../hooks/db/useProfileQuery';
+import {useLiveLocationTracker} from '../hooks/useLiveLocationTracker';
+import DisplayNameSetupScreen from '../screens/DisplayNameSetupScreen';
 import HomeScreen from '../screens/HomeScreen';
 import SearchScreen from '../screens/SearchScreen';
 import SocialScreen from '../screens/SocialScreen';
@@ -30,8 +33,34 @@ function ActiveTabScreen({tabId}: {tabId: AppTabId}) {
 
 function AppTabs() {
   const [activeTab, setActiveTab] = React.useState<AppTabId>('Home');
+  const profileApi = useProfileQuery({historyLimit: 0, historyOffset: 0});
   const insets = useSafeAreaInsets();
   const tabBarHeight = 72 + insets.bottom;
+  const profile = profileApi.profile;
+  const awaitingProfile = profileApi.loading && !profile;
+  const showDisplayNameSetup = !profileApi.loading && profile == null;
+
+  useLiveLocationTracker({
+    trackingEnabled: profile?.settings.locationSharingEnabled ?? false,
+  });
+
+  if (awaitingProfile) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingScene}>
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (showDisplayNameSetup) {
+    return (
+      <View style={styles.container}>
+        <DisplayNameSetupScreen onComplete={profileApi.refetch} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -82,6 +111,15 @@ const styles = StyleSheet.create({
   tabButton: {
     flex: 1,
     alignItems: 'center',
+  },
+  loadingScene: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontSize: 13,
+    color: '#475569',
   },
 });
 

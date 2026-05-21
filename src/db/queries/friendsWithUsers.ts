@@ -1,6 +1,6 @@
-import {and, eq, or} from 'drizzle-orm';
+import {and, eq, ne, or} from 'drizzle-orm';
 import {friendships, users} from '../../entities';
-import type {Friend} from '../../types/friend';
+import type {Friend, IncomingFriendRequest} from '../../types/friend';
 import {getDatabase} from '../client';
 
 export async function fetchFriendsWithUsers(currentUserId: string): Promise<Friend[]> {
@@ -29,13 +29,14 @@ export async function fetchFriendsWithUsers(currentUserId: string): Promise<Frie
   return rows.map(({friend}) => mapUserToFriend(friend));
 }
 
-export async function fetchAcceptedAndPendingFriends(currentUserId: string): Promise<Friend[]> {
+export async function fetchIncomingFriendRequests(
+  currentUserId: string,
+): Promise<IncomingFriendRequest[]> {
   const db = getDatabase();
   const rows = await db
     .select({
       friendshipId: friendships.id,
-      status: friendships.status,
-      friend: users,
+      requester: users,
     })
     .from(friendships)
     .innerJoin(
@@ -45,11 +46,30 @@ export async function fetchAcceptedAndPendingFriends(currentUserId: string): Pro
         and(eq(friendships.userBId, currentUserId), eq(users.id, friendships.userAId)),
       ),
     )
-    .where(or(eq(friendships.userAId, currentUserId), eq(friendships.userBId, currentUserId)));
+    .where(
+      and(
+        or(eq(friendships.userAId, currentUserId), eq(friendships.userBId, currentUserId)),
+        eq(friendships.status, 'pending'),
+        ne(friendships.issuedById, currentUserId),
+      ),
+    );
 
-  return rows
-    .filter(row => row.status === 'accepted' || row.status === 'pending')
-    .map(({friend}) => mapUserToFriend(friend));
+  return rows.map(({friendshipId, requester}) => ({
+    friendshipId,
+    id: requester.id,
+    name: requester.displayName || 'Traveler',
+  }));
+}
+
+export async function fetchFriendProfileSyncUserIds(currentUserId: string): Promise<string[]> {
+  const [friends, incoming] = await Promise.all([
+    fetchFriendsWithUsers(currentUserId),
+    fetchIncomingFriendRequests(currentUserId),
+  ]);
+  const ids = new Set<string>();
+  friends.forEach(friend => ids.add(friend.id));
+  incoming.forEach(request => ids.add(request.id));
+  return [...ids];
 }
 
 function mapUserToFriend(user: typeof users.$inferSelect): Friend {
@@ -61,6 +81,9 @@ function mapUserToFriend(user: typeof users.$inferSelect): Friend {
   return {
     id: user.id,
     name: user.displayName || 'Traveler',
+    displayName: user.displayName,
+    bio: user.bio ?? '',
+    homeCity: user.homeCity ?? '',
     isOnline: user.locationTrackingEnabled,
     sharedLocation: hasCoordinates
       ? {

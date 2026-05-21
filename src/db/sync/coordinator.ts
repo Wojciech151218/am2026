@@ -1,8 +1,6 @@
 import type {User} from 'firebase/auth';
-import {ensureUserProfile} from '../../firebase/profile';
 import {isNativeDbSupported} from '../client';
 import {runMigrations} from '../migrate';
-import {seedCurrentUser} from '../repositories/userRepository';
 import {clearFriendProfileListeners, startInboundSync, stopInboundSync} from './inboundWorker';
 import {processOutboundSyncQueue} from './outboundWorker';
 
@@ -16,14 +14,6 @@ export async function startDbSync(user: User): Promise<void> {
 
   activeUserId = user.uid;
   await runMigrations();
-
-  await seedCurrentUser({
-    id: user.uid,
-    email: user.email,
-    displayName: user.displayName ?? '',
-  });
-
-  await ensureUserProfile(user);
   await startInboundSync(user.uid);
   await processOutboundSyncQueue();
 

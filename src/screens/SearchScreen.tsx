@@ -1,14 +1,15 @@
 import React, {useMemo, useState} from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {Linking, StyleSheet, Text, View} from 'react-native';
 import FilterChips from '../components/FilterChips';
 import SearchBar from '../components/SearchBar';
 import SearchResultList from '../components/SearchResultList';
-import {useSearchApi} from '../hooks/useSearchApi';
+import {googleMapsUrl} from '../api/googleGeocoding';
+import {useFriendLocationsSearchQuery} from '../hooks/db/useFriendLocationsSearchQuery';
 import {useSearchFilters} from '../hooks/useSearchFilters';
-import type {SearchFilterKey} from '../types/search';
+import type {FriendLocationSearchResult, SearchFilterKey} from '../types/search';
 
 const filterOptions: Array<{key: SearchFilterKey; label: string}> = [
-  {key: 'type', label: 'Type'},
+  {key: 'type', label: 'Friend'},
   {key: 'distance', label: 'Distance'},
   {key: 'rating', label: 'Rating'},
 ];
@@ -16,24 +17,23 @@ const filterOptions: Array<{key: SearchFilterKey; label: string}> = [
 function SearchScreen() {
   const [query, setQuery] = useState('');
   const {filters, activeFilterKey, setActiveFilterKey, setFilters} = useSearchFilters();
-  const searchApi = useSearchApi();
+  const searchApi = useFriendLocationsSearchQuery();
 
   const activeFilterDescription = useMemo(() => {
     if (activeFilterKey === 'type') {
-      return `Type: ${filters.type}`;
+      return 'Friend locations and nearby Google Maps places';
     }
     if (activeFilterKey === 'distance') {
-      return `Distance: ${filters.distanceKm}km`;
+      return `Max distance: ${filters.distanceKm} km`;
     }
-    return `Min rating: ${filters.minRating}`;
-  }, [activeFilterKey, filters.distanceKm, filters.minRating, filters.type]);
+    return `Min rating: ${filters.minRating}★`;
+  }, [activeFilterKey, filters.distanceKm, filters.minRating]);
 
   const onSelectFilter = (key: SearchFilterKey) => {
     setActiveFilterKey(key);
     setFilters(previous => {
       if (key === 'type') {
-        const nextType = previous.type === 'all' ? 'places' : previous.type === 'places' ? 'events' : 'all';
-        return {...previous, type: nextType};
+        return previous;
       }
       if (key === 'distance') {
         const nextDistance = previous.distanceKm >= 30 ? 10 : previous.distanceKm + 10;
@@ -48,17 +48,33 @@ function SearchScreen() {
     await searchApi.executeSearch(query, filters);
   };
 
+  const onOpenResult = (item: FriendLocationSearchResult) => {
+    if (item.placeCoordinates) {
+      Linking.openURL(googleMapsUrl(item.placeCoordinates)).catch(() => null);
+    }
+  };
+
   return (
     <View style={styles.safeArea}>
       <View style={styles.content}>
         <Text style={styles.heading}>Search</Text>
-        <SearchBar value={query} onChangeText={setQuery} onSubmit={onSubmitSearch} placeholder="Search places or events" />
+        <Text style={styles.subheading}>Friend visits and nearby places</Text>
+        <SearchBar
+          value={query}
+          onChangeText={setQuery}
+          onSubmit={onSubmitSearch}
+          placeholder="Friend name, place, city, or POI"
+        />
         <FilterChips options={filterOptions} activeKey={activeFilterKey} onSelect={onSelectFilter} />
         <Text style={styles.filterInfo}>{activeFilterDescription}</Text>
         {searchApi.loading ? <Text style={styles.status}>Searching...</Text> : null}
         {searchApi.error ? <Text style={styles.error}>{searchApi.error}</Text> : null}
         <View style={styles.results}>
-          <SearchResultList results={searchApi.results} emptyText="Use search + filters to see results." />
+          <SearchResultList
+            results={searchApi.results}
+            onPressItem={onOpenResult}
+            emptyText="Search friends' saved locations and nearby Google Maps places."
+          />
         </View>
       </View>
     </View>
@@ -80,6 +96,10 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: '#0F172A',
+  },
+  subheading: {
+    fontSize: 13,
+    color: '#475569',
   },
   filterInfo: {
     fontSize: 12,

@@ -5,9 +5,9 @@ export const users = sqliteTable(
   {
     id: text('id').primaryKey(),
     email: text('email'),
-    displayName: text('display_name').notNull().default(''),
-    bio: text('bio').notNull().default(''),
-    homeCity: text('home_city').notNull().default(''),
+    displayName: text('display_name'),
+    bio: text('bio').default(''),
+    homeCity: text('home_city').default(''),
     currentLatitude: real('current_latitude'),
     currentLongitude: real('current_longitude'),
     currentLocationLabel: text('current_location_label'),

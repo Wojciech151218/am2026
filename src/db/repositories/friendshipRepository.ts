@@ -1,4 +1,4 @@
-import {and, eq, or} from 'drizzle-orm';
+import {and, eq, ne, or} from 'drizzle-orm';
 import {friendships, type FriendshipRow, type FriendshipStatus} from '../../entities';
 import {getDatabase} from '../client';
 import {notifyDbChanged} from '../reactivity';
@@ -6,14 +6,17 @@ import {ensurePlaceholderUser} from './userRepository';
 import {enqueueSyncMutation} from './syncQueueRepository';
 import {createId, nowIso} from '../utils';
 
-export async function upsertFriendshipFromRemote(row: {
+export type FriendshipRemoteRow = {
   id: string;
   userAId: string;
   userBId: string;
+  issuedById: string;
   status: FriendshipStatus;
   createdAtIso: string;
   updatedAtIso: string;
-}): Promise<void> {
+};
+
+export async function upsertFriendshipFromRemote(row: FriendshipRemoteRow): Promise<void> {
   const db = getDatabase();
   const existing = await db
     .select()
@@ -25,17 +28,21 @@ export async function upsertFriendshipFromRemote(row: {
     return;
   }
 
+  const issuedById = row.issuedById || row.userAId;
+
   await ensurePlaceholderUser(row.userAId);
   await ensurePlaceholderUser(row.userBId);
+  await ensurePlaceholderUser(issuedById);
 
   await db
     .insert(friendships)
-    .values(row)
+    .values({...row, issuedById})
     .onConflictDoUpdate({
       target: friendships.id,
       set: {
         userAId: row.userAId,
         userBId: row.userBId,
+        issuedById,
         status: row.status,
         createdAtIso: row.createdAtIso,
         updatedAtIso: row.updatedAtIso,
@@ -60,6 +67,7 @@ export async function addFriend(
     id,
     userAId: currentUserId,
     userBId: targetUserId,
+    issuedById: currentUserId,
     status: 'pending' as const,
     createdAtIso,
     updatedAtIso,
@@ -71,6 +79,7 @@ export async function addFriend(
     friendshipId: id,
     userAId: currentUserId,
     userBId: targetUserId,
+    issuedById: currentUserId,
     status: 'pending',
     createdAtIso,
     updatedAtIso,
@@ -78,6 +87,55 @@ export async function addFriend(
 
   notifyDbChanged();
   return row;
+}
+
+export async function acceptFriendRequest(
+  currentUserId: string,
+  friendshipId: string,
+): Promise<FriendshipRow | null> {
+  const db = getDatabase();
+  const existing = await db
+    .select()
+    .from(friendships)
+    .where(eq(friendships.id, friendshipId))
+    .limit(1);
+  const row = existing[0];
+
+  if (!row) {
+    return null;
+  }
+
+  if (row.status !== 'pending') {
+    throw new Error('Only pending friend requests can be accepted.');
+  }
+
+  if (row.issuedById === currentUserId) {
+    throw new Error('You cannot accept a friend request you sent.');
+  }
+
+  if (row.userAId !== currentUserId && row.userBId !== currentUserId) {
+    throw new Error('You are not part of this friendship.');
+  }
+
+  const updatedAtIso = nowIso();
+
+  await db
+    .update(friendships)
+    .set({status: 'accepted', updatedAtIso})
+    .where(eq(friendships.id, friendshipId));
+
+  await enqueueSyncMutation('acceptFriend', {
+    friendshipId: row.id,
+    userAId: row.userAId,
+    userBId: row.userBId,
+    issuedById: row.issuedById,
+    status: 'accepted',
+    createdAtIso: row.createdAtIso,
+    updatedAtIso,
+  });
+
+  notifyDbChanged();
+  return {...row, status: 'accepted', updatedAtIso};
 }
 
 export async function findFriendshipBetween(

@@ -18,7 +18,7 @@ export const firestoreCollections = {
 export type FirestoreUserProfile = {
   uid: string;
   email: string | null;
-  displayName: string;
+  displayName: string | null;
   bio: string;
   homeCity: string;
   currentLatitude?: number | null;
@@ -44,6 +44,7 @@ export type FirestoreFriendship = {
   id: string;
   userAId: string;
   userBId: string;
+  issuedById: string;
   status: FriendshipStatus;
   createdAtIso: string;
   updatedAtIso: string;
@@ -72,7 +73,7 @@ const userProfileConverter: FirestoreDataConverter<FirestoreUserProfile> = {
     return {
       uid: snapshot.id,
       email: data.email ?? null,
-      displayName: data.displayName ?? '',
+      displayName: data.displayName ?? null,
       bio: data.bio ?? '',
       homeCity: data.homeCity ?? '',
       currentLatitude: data.currentLatitude ?? null,
@@ -114,6 +115,7 @@ const friendshipConverter: FirestoreDataConverter<FirestoreFriendship> = {
       id: snapshot.id,
       userAId: data.userAId ?? '',
       userBId: data.userBId ?? '',
+      issuedById: data.issuedById ?? data.userAId ?? '',
       status: data.status ?? 'pending',
       createdAtIso: data.createdAtIso ?? '',
       updatedAtIso: data.updatedAtIso ?? '',

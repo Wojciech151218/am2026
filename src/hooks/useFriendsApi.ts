@@ -23,6 +23,9 @@ export function useFriendsApi(): UseFriendsApiResult {
         {
           id: 'friend_1',
           name: 'Alex',
+          displayName: 'Alex',
+          bio: 'Weekend explorer.',
+          homeCity: 'Krakow',
           isOnline: true,
           sharedLocation: {
             latitude: 52.2297,
@@ -34,6 +37,9 @@ export function useFriendsApi(): UseFriendsApiResult {
         {
           id: 'friend_2',
           name: 'Jamie',
+          displayName: 'Jamie',
+          bio: '',
+          homeCity: '',
           isOnline: false,
         },
       ]);

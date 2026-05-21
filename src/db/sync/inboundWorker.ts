@@ -10,7 +10,7 @@ import {
   getUserProfileDocument,
   getUserProfilesCollection,
 } from '../../firebase/schemas';
-import {fetchAcceptedAndPendingFriends} from '../queries/friendsWithUsers';
+import {fetchFriendProfileSyncUserIds} from '../queries/friendsWithUsers';
 import {upsertFriendshipFromRemote} from '../repositories/friendshipRepository';
 import {upsertLocationFromRemote} from '../repositories/locationRepository';
 import {upsertUserFromRemote} from '../repositories/userRepository';
@@ -47,6 +47,9 @@ export async function startInboundSync(currentUserId: string): Promise<void> {
           return;
         }
         const profile = snapshot.data();
+        if (!(profile.displayName ?? '').trim()) {
+          return;
+        }
         upsertUserFromRemote(mapFirestoreUserToLocal(profile), {
           skipIfLocalIsNewer: true,
         }).catch(() => null);
@@ -113,8 +116,7 @@ async function refreshFriendProfileListeners(
   currentUserId: string,
   unsubscribes: Unsubscribe[],
 ): Promise<void> {
-  const friends = await fetchAcceptedAndPendingFriends(currentUserId);
-  const friendIds = new Set(friends.map(friend => friend.id));
+  const friendIds = new Set(await fetchFriendProfileSyncUserIds(currentUserId));
 
   friendProfileUnsubscribes.forEach((unsubscribe, friendId) => {
     if (!friendIds.has(friendId)) {

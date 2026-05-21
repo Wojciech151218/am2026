@@ -42,6 +42,7 @@ export function mapFirestoreFriendshipToLocal(friendship: FirestoreFriendship) {
     id: friendship.id,
     userAId: friendship.userAId,
     userBId: friendship.userBId,
+    issuedById: friendship.issuedById,
     status: friendship.status as FriendshipStatus,
     createdAtIso: friendship.createdAtIso,
     updatedAtIso: friendship.updatedAtIso,
@@ -55,7 +56,7 @@ export function mapLocalUserToFirestore(
   return {
     uid: user.id,
     email: user.email ?? null,
-    displayName: user.displayName ?? '',
+    displayName: user.displayName ?? null,
     bio: user.bio ?? '',
     homeCity: user.homeCity ?? '',
     currentLatitude: user.currentLatitude ?? null,

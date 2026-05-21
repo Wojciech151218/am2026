@@ -1,12 +1,14 @@
-import {desc, eq} from 'drizzle-orm';
-import {locations} from '../../entities';
 import type {UserProfile} from '../../types/profile';
-import {getDatabase} from '../client';
 import {getUserById} from '../repositories/userRepository';
+import {fetchUserLocationHistory} from './userLocationHistory';
 
 export async function fetchCurrentUserProfile(
   currentUserId: string,
-  options?: {viewedUserId?: string},
+  options?: {
+    viewedUserId?: string;
+    historyLimit?: number;
+    historyOffset?: number;
+  },
 ): Promise<UserProfile | null> {
   const targetUserId = options?.viewedUserId ?? currentUserId;
   const isCurrentUser = targetUserId === currentUserId;
@@ -16,32 +18,26 @@ export async function fetchCurrentUserProfile(
     return null;
   }
 
-  const db = getDatabase();
-  const historyRows = await db
-    .select()
-    .from(locations)
-    .where(eq(locations.userId, targetUserId))
-    .orderBy(desc(locations.visitedAtIso))
-    .limit(50);
+  const locationHistory =
+    options?.historyLimit === 0
+      ? []
+      : await fetchUserLocationHistory({
+          userId: targetUserId,
+          limit: options?.historyLimit ?? 10,
+          offset: options?.historyOffset ?? 0,
+        });
 
   return {
     id: user.id,
-    displayName: user.displayName || (isCurrentUser ? 'You' : 'Traveler'),
-    bio: user.bio,
+    displayName: user.displayName,
+    bio: user.bio ?? '',
+    homeCity: user.homeCity ?? '',
     isCurrentUser,
     settings: {
       notificationsEnabled: true,
       locationSharingEnabled: user.locationTrackingEnabled,
       theme: 'system',
     },
-    locationHistory: historyRows.map(row => ({
-      id: row.id,
-      label: row.label,
-      coordinates: {
-        latitude: row.latitude,
-        longitude: row.longitude,
-      },
-      visitedAt: row.visitedAtIso,
-    })),
+    locationHistory,
   };
 }

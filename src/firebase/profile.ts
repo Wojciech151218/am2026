@@ -1,11 +1,19 @@
 import {setDoc} from 'firebase/firestore';
-import type {User} from 'firebase/auth';
-import {Platform} from 'react-native';
-import {seedCurrentUser} from '../db/repositories/userRepository';
 import {getUserProfileDocument} from './schemas';
 
-export async function ensureUserProfile(user: User): Promise<void> {
-  const profileDoc = getUserProfileDocument(user.uid);
+export type PublishCurrentUserProfileInput = {
+  uid: string;
+  email: string | null;
+  displayName: string;
+  bio: string;
+  homeCity: string;
+  locationTrackingEnabled?: boolean;
+};
+
+export async function publishCurrentUserProfile(
+  input: PublishCurrentUserProfileInput,
+): Promise<void> {
+  const profileDoc = getUserProfileDocument(input.uid);
   if (!profileDoc) {
     return;
   }
@@ -13,23 +21,15 @@ export async function ensureUserProfile(user: User): Promise<void> {
   await setDoc(
     profileDoc,
     {
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName ?? '',
-      bio: '',
-      homeCity: '',
-      locationTrackingEnabled: false,
+      uid: input.uid,
+      email: input.email,
+      displayName: input.displayName,
+      bio: input.bio,
+      homeCity: input.homeCity,
+      locationTrackingEnabled: input.locationTrackingEnabled ?? false,
       updatedAtIso: nowIso,
       createdAtIso: nowIso,
     },
     {merge: true},
   );
-
-  if (Platform.OS !== 'web') {
-    await seedCurrentUser({
-      id: user.uid,
-      email: user.email,
-      displayName: user.displayName ?? '',
-    });
-  }
 }

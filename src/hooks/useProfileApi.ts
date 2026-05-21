@@ -24,6 +24,7 @@ export function useProfileApi(userId?: string): UseProfileApiResult {
         id: userId ?? 'me',
         displayName: isCurrentUser ? 'You' : 'Guest Traveler',
         bio: isCurrentUser ? 'Planning smarter trips.' : 'Sharing selected profile details.',
+        homeCity: isCurrentUser ? 'Warsaw' : '',
         isCurrentUser,
         settings: {
           notificationsEnabled: true,

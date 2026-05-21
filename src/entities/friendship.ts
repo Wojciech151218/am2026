@@ -20,6 +20,9 @@ export const friendships = sqliteTable(
     userBId: text('user_b_id')
       .notNull()
       .references(() => users.id, {onDelete: 'cascade'}),
+    issuedById: text('issued_by_id')
+      .notNull()
+      .references(() => users.id, {onDelete: 'cascade'}),
     status: text('status', {enum: friendshipStatuses}).notNull(),
     createdAtIso: text('created_at_iso').notNull(),
     updatedAtIso: text('updated_at_iso').notNull(),

@@ -36,11 +36,13 @@ CREATE TABLE \`friendships\` (
 	\`id\` text PRIMARY KEY NOT NULL,
 	\`user_a_id\` text NOT NULL,
 	\`user_b_id\` text NOT NULL,
+	\`issued_by_id\` text NOT NULL,
 	\`status\` text NOT NULL,
 	\`created_at_iso\` text NOT NULL,
 	\`updated_at_iso\` text NOT NULL,
 	FOREIGN KEY (\`user_a_id\`) REFERENCES \`users\`(\`id\`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (\`user_b_id\`) REFERENCES \`users\`(\`id\`) ON UPDATE no action ON DELETE cascade
+	FOREIGN KEY (\`user_b_id\`) REFERENCES \`users\`(\`id\`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (\`issued_by_id\`) REFERENCES \`users\`(\`id\`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
 CREATE INDEX \`friendships_user_a_status_idx\` ON \`friendships\` (\`user_a_id\`,\`status\`);
@@ -58,9 +60,14 @@ CREATE TABLE \`sync_mutations\` (
 --> statement-breakpoint
 CREATE INDEX \`sync_mutations_status_idx\` ON \`sync_mutations\` (\`status\`,\`created_at_iso\`);`;
 
+const migration0001 = `ALTER TABLE \`friendships\` ADD \`issued_by_id\` text REFERENCES \`users\`(\`id\`) ON UPDATE no action ON DELETE cascade;
+--> statement-breakpoint
+UPDATE \`friendships\` SET \`issued_by_id\` = \`user_a_id\` WHERE \`issued_by_id\` IS NULL;`;
+
 export const migrations = {
   journal,
   migrations: {
     m0000: migration0000,
+    m0001: migration0001,
   },
 };

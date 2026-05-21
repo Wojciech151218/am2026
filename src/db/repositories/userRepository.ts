@@ -40,28 +40,46 @@ export async function upsertUserFromRemote(
   notifyDbChanged();
 }
 
-export async function seedCurrentUser(input: {
+export async function createCurrentUserProfile(input: {
   id: string;
   email: string | null;
   displayName: string;
+  bio?: string;
+  homeCity?: string;
 }): Promise<UserRow> {
+  const trimmedName = input.displayName.trim();
+  if (!trimmedName) {
+    throw new Error('Display name is required.');
+  }
+
+  const existing = await getUserById(input.id);
+  if (existing) {
+    throw new Error('Profile already exists.');
+  }
+
   const db = getDatabase();
   const updatedAtIso = nowIso();
   const row: NewUserRow = {
     id: input.id,
     email: input.email,
-    displayName: input.displayName,
-    bio: '',
-    homeCity: '',
+    displayName: trimmedName,
+    bio: input.bio?.trim() ?? '',
+    homeCity: input.homeCity?.trim() ?? '',
     locationTrackingEnabled: false,
     updatedAtIso,
     syncedAtIso: null,
   };
 
-  await db.insert(users).values(row).onConflictDoNothing();
-  const result = await db.select().from(users).where(eq(users.id, input.id)).limit(1);
+  await db.insert(users).values(row);
+  await enqueueSyncMutation('updateUserProfile', {
+    userId: input.id,
+    displayName: trimmedName,
+    bio: row.bio,
+    homeCity: row.homeCity,
+    updatedAtIso,
+  });
   notifyDbChanged();
-  return result[0] ?? row;
+  return row;
 }
 
 export async function getUserById(userId: string): Promise<UserRow | null> {
@@ -116,6 +134,39 @@ export async function updateCurrentCoordinates(
       updatedAtIso,
     })
     .where(eq(users.id, userId));
+
+  await enqueueSyncMutation('updateCurrentLocation', {
+    userId,
+    latitude: input.latitude,
+    longitude: input.longitude,
+    label: input.label,
+    updatedAtIso,
+  });
+
+  notifyDbChanged();
+}
+
+export async function clearCurrentCoordinates(userId: string): Promise<void> {
+  const db = getDatabase();
+  const updatedAtIso = nowIso();
+
+  await db
+    .update(users)
+    .set({
+      currentLatitude: null,
+      currentLongitude: null,
+      currentLocationLabel: null,
+      updatedAtIso,
+    })
+    .where(eq(users.id, userId));
+
+  await enqueueSyncMutation('updateCurrentLocation', {
+    userId,
+    latitude: null,
+    longitude: null,
+    label: null,
+    updatedAtIso,
+  });
 
   notifyDbChanged();
 }
