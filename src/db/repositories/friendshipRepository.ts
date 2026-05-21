@@ -138,6 +138,40 @@ export async function acceptFriendRequest(
   return {...row, status: 'accepted', updatedAtIso};
 }
 
+export async function removeFriend(
+  currentUserId: string,
+  friendshipId: string,
+): Promise<boolean> {
+  const db = getDatabase();
+  const existing = await db
+    .select()
+    .from(friendships)
+    .where(eq(friendships.id, friendshipId))
+    .limit(1);
+  const row = existing[0];
+
+  if (!row) {
+    return false;
+  }
+
+  if (row.userAId !== currentUserId && row.userBId !== currentUserId) {
+    throw new Error('You are not part of this friendship.');
+  }
+
+  if (row.status !== 'accepted') {
+    throw new Error('Only accepted friendships can be removed.');
+  }
+
+  await db.delete(friendships).where(eq(friendships.id, friendshipId));
+
+  await enqueueSyncMutation('unfriend', {
+    friendshipId: row.id,
+  });
+
+  notifyDbChanged();
+  return true;
+}
+
 export async function findFriendshipBetween(
   userAId: string,
   userBId: string,

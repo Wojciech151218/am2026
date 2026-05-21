@@ -7,6 +7,7 @@ export type FriendSearchResult = SearchResult & {
 
 export type Friend = {
   id: string;
+  friendshipId: string;
   name: string;
   displayName: string | null;
   bio: string;

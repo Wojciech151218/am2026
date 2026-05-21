@@ -26,7 +26,7 @@ export async function fetchFriendsWithUsers(currentUserId: string): Promise<Frie
       ),
     );
 
-  return rows.map(({friend}) => mapUserToFriend(friend));
+  return rows.map(({friendshipId, friend}) => mapUserToFriend(friend, friendshipId));
 }
 
 export async function fetchIncomingFriendRequests(
@@ -72,7 +72,7 @@ export async function fetchFriendProfileSyncUserIds(currentUserId: string): Prom
   return [...ids];
 }
 
-function mapUserToFriend(user: typeof users.$inferSelect): Friend {
+function mapUserToFriend(user: typeof users.$inferSelect, friendshipId: string): Friend {
   const hasCoordinates =
     user.locationTrackingEnabled &&
     user.currentLatitude != null &&
@@ -80,6 +80,7 @@ function mapUserToFriend(user: typeof users.$inferSelect): Friend {
 
   return {
     id: user.id,
+    friendshipId,
     name: user.displayName || 'Traveler',
     displayName: user.displayName,
     bio: user.bio ?? '',

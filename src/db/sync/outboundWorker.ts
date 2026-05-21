@@ -1,5 +1,5 @@
 import {asc, eq} from 'drizzle-orm';
-import {setDoc} from 'firebase/firestore';
+import {deleteDoc, setDoc} from 'firebase/firestore';
 import {syncMutations} from '../../entities';
 import {
   getFriendshipDocument,
@@ -94,6 +94,14 @@ async function dispatchMutation(
         },
         {merge: true},
       );
+      return;
+    }
+    case 'unfriend': {
+      const friendshipDoc = getFriendshipDocument(String(payload.friendshipId));
+      if (!friendshipDoc) {
+        throw new Error('Firestore is not configured.');
+      }
+      await deleteDoc(friendshipDoc);
       return;
     }
     case 'toggleLocationTracking':

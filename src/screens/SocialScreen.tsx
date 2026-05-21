@@ -120,7 +120,15 @@ function SocialScreen() {
         visible={selectedFriend != null}
         onClose={() => setSelectedFriend(null)}
         expandedFraction={0.85}>
-        {selectedFriend ? <FriendProfilePreview friend={selectedFriend} /> : null}
+        {selectedFriend ? (
+          <FriendProfilePreview
+            friend={selectedFriend}
+            onUnfriended={() => {
+              setSelectedFriend(null);
+              friendsApi.refetch().catch(() => null);
+            }}
+          />
+        ) : null}
       </BlurContainer>
     </View>
   );

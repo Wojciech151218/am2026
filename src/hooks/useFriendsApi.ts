@@ -22,6 +22,7 @@ export function useFriendsApi(): UseFriendsApiResult {
       setFriends([
         {
           id: 'friend_1',
+          friendshipId: 'friendship_mock_1',
           name: 'Alex',
           displayName: 'Alex',
           bio: 'Weekend explorer.',
@@ -36,6 +37,7 @@ export function useFriendsApi(): UseFriendsApiResult {
         },
         {
           id: 'friend_2',
+          friendshipId: 'friendship_mock_2',
           name: 'Jamie',
           displayName: 'Jamie',
           bio: '',
