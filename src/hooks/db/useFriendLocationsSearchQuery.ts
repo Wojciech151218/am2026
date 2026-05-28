@@ -3,16 +3,15 @@ import {Platform} from 'react-native';
 import {searchNearbyPlaces} from '../../api/googlePlacesSearch';
 import {searchFriendLocations} from '../../db/queries/searchFriendLocations';
 import {getUserById} from '../../db/repositories/userRepository';
-import type {FriendLocationSearchResult, SearchFilters} from '../../types/search';
+import type {FriendLocationSearchResult} from '../../types/search';
 import type {Coordinates} from '../../types/location';
-import {useSearchApi} from '../useSearchApi';
 import {useDb} from './useDb';
 
 type UseFriendLocationsSearchQueryResult = {
   results: FriendLocationSearchResult[];
   loading: boolean;
   error: string | null;
-  executeSearch: (query: string, filters: SearchFilters) => Promise<void>;
+  executeSearch: (query: string) => Promise<void>;
 };
 
 function mergeSearchResults(
@@ -31,29 +30,41 @@ function mergeSearchResults(
     merged.push(row);
   }
 
-  return merged.sort((a, b) => a.distanceKm - b.distanceKm);
+  return merged;
 }
 
 export function useFriendLocationsSearchQuery(): UseFriendLocationsSearchQueryResult {
-  const mockApi = useSearchApi<FriendLocationSearchResult>();
   const {currentUserId, isLocalDbEnabled, ready} = useDb();
   const [results, setResults] = useState<FriendLocationSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const executeSearch = useCallback(
-    async (query: string, filters: SearchFilters) => {
+    async (query: string) => {
+      const trimmedQuery = query.trim();
       if (Platform.OS === 'web' || !isLocalDbEnabled || !ready || !currentUserId) {
-        await mockApi.executeSearch(query, filters);
-        const placeRows = (await searchNearbyPlaces(query, null)).map(place => ({
-          ...place,
-          friendUserId: '',
-          distanceKm: 0,
-          rating: 0,
-        }));
-        setResults(
-          mergeSearchResults(mockApi.results as FriendLocationSearchResult[], placeRows),
-        );
+        setLoading(true);
+        setError(null);
+        if (!trimmedQuery) {
+          setResults([]);
+          setLoading(false);
+          return;
+        }
+        try {
+          const placeRows = (await searchNearbyPlaces(trimmedQuery, null, 7)).map(place => ({
+            ...place,
+            friendUserId: '',
+            distanceKm: 0,
+            rating: 0,
+            isFriendResult: false,
+          }));
+          setResults(placeRows);
+          return;
+        } catch (searchError) {
+          setError(searchError instanceof Error ? searchError.message : 'Location search failed.');
+        } finally {
+          setLoading(false);
+        }
         return;
       }
 
@@ -69,14 +80,18 @@ export function useFriendLocationsSearchQuery(): UseFriendLocationsSearchQueryRe
               }
             : null;
 
-        const [friendRows, placeRows] = await Promise.all([
-          searchFriendLocations({
+        if (!trimmedQuery) {
+          const latestFriendRows = await searchFriendLocations({
             currentUserId,
-            query,
-            maxDistanceKm: filters.distanceKm,
-            minRating: filters.minRating,
-          }),
-          searchNearbyPlaces(query, origin),
+            limit: 10,
+          });
+          setResults(latestFriendRows);
+          return;
+        }
+
+        const [friendRows, placeRows] = await Promise.all([
+          searchFriendLocations({currentUserId, query: trimmedQuery, limit: 3}),
+          searchNearbyPlaces(trimmedQuery, origin, 7),
         ]);
 
         const normalizedPlaces: FriendLocationSearchResult[] = placeRows.map(place => ({
@@ -88,6 +103,7 @@ export function useFriendLocationsSearchQuery(): UseFriendLocationsSearchQueryRe
             : place.tags.find(tag => tag.startsWith('★'))
               ? Number(place.tags.find(tag => tag.startsWith('★'))?.slice(1) ?? 3)
               : 3,
+          isFriendResult: false,
         }));
 
         setResults(mergeSearchResults(friendRows, normalizedPlaces));
@@ -97,7 +113,7 @@ export function useFriendLocationsSearchQuery(): UseFriendLocationsSearchQueryRe
         setLoading(false);
       }
     },
-    [currentUserId, isLocalDbEnabled, ready, mockApi],
+    [currentUserId, isLocalDbEnabled, ready],
   );
 
   return {results, loading, error, executeSearch};

@@ -1,9 +1,8 @@
-- @GoogleMapsPreviewCard renders at the bottom of the screen and takes whole width space , it should be centered and take 90% of width , also when this components is visible scrolling 
+- expanded ( when pressed) @GoogleMapsPreviewCard renders at the bottom of the screen and takes whole width space , it should be centered and take 90% of width , also when this components is visible scrolling 
 to change screens should be disabled
 - @CompassWidget looks bad the arrow foundation doesnt align with the compass centre, use a ready component from some lib 
-- @SearchScreen needs improvements : no longer it should feature filter chips , before even searching it should show latest places of your friends 
+- @SearchScreen needs improvements : no longer it should feature filter chips , before even pressing search it should auto query (local db) latest places of your friends 
 ( join on yoour firends location query with limit 10 sorted by recency), when searched it should search up to 3 places of your firends that match the keywords and sorted by recency , 
 and search 7 places from google maps (refactor @useFriendLocationsSearchQuery) also your friends choices should be highleted in the ui all the objects should be clickable 
 (it should move you to the google maps app currently on google map searches allow that  )
 - Location pressables components need to be unified accross the app (@SearchScreen , @HomeScreen , @FriendProfilePreview) thye should support optional highlights and should move to the googlemaps upon clicking
--

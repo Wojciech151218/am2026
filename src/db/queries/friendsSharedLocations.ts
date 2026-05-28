@@ -68,6 +68,10 @@ export async function fetchFriendsSharedLocationsForHome(currentUserId: string):
       title: `${name} is nearby`,
       description,
       friendUserId: friend.id,
+      coordinates: {
+        latitude: friend.currentLatitude,
+        longitude: friend.currentLongitude,
+      },
     });
 
     markers.push({
@@ -103,6 +107,10 @@ export async function fetchFriendsSharedLocationsForHome(currentUserId: string):
         title: `${name} visited ${snapshot.label}`,
         description: snapshot.city ? `${snapshot.city} · ${snapshot.label}` : snapshot.label,
         friendUserId: friendId,
+        coordinates: {
+          latitude: snapshot.latitude,
+          longitude: snapshot.longitude,
+        },
       });
     }
   }

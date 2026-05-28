@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {Pressable, Share, StyleSheet, Text, View} from 'react-native';
+import {Linking, Pressable, StyleSheet, Text, View} from 'react-native';
 import {googleMapsUrl, reverseGeocode} from '../api/googleGeocoding';
 import {useToast} from './Toast';
 import type {Coordinates} from '../types/location';
@@ -50,23 +50,19 @@ function CurrentLocationPlaceCard({
     return () => {
       cancelled = true;
     };
-  }, [coordinates?.latitude, coordinates?.longitude, trackingEnabled]);
+  }, [coordinates, coordinates?.latitude, coordinates?.longitude, trackingEnabled]);
 
-  const onShare = useCallback(async () => {
+  const onOpenInMaps = useCallback(async () => {
     if (!coordinates) {
       return;
     }
     const url = googleMapsUrl(coordinates);
     try {
-      await Share.share({
-        message: `${placeLabel}\n${url}`,
-        url,
-        title: placeLabel,
-      });
+      await Linking.openURL(url);
     } catch {
-      showToast('Share failed', {body: 'Unable to open the share sheet.', variant: 'error'});
+      showToast('Open failed', {body: 'Unable to open Google Maps.', variant: 'error'});
     }
-  }, [coordinates, placeLabel, showToast]);
+  }, [coordinates, showToast]);
 
   if (!trackingEnabled) {
     return (
@@ -89,9 +85,9 @@ function CurrentLocationPlaceCard({
   return (
     <Pressable
       style={({pressed}) => [styles.card, pressed && styles.cardPressed]}
-      onPress={onShare}
+      onPress={onOpenInMaps}
       accessibilityRole="button"
-      accessibilityLabel="Share current location">
+      accessibilityLabel="Open current location in Google Maps">
       <View style={styles.pin}>
         <Text style={styles.pinText}>📍</Text>
       </View>
@@ -105,11 +101,11 @@ function CurrentLocationPlaceCard({
       </View>
       <Pressable
         style={styles.shareChip}
-        onPress={onShare}
+        onPress={onOpenInMaps}
         hitSlop={8}
         accessibilityRole="button"
-        accessibilityLabel="Share location">
-        <Text style={styles.shareChipText}>Share</Text>
+        accessibilityLabel="Open location in Google Maps">
+        <Text style={styles.shareChipText}>Open</Text>
       </Pressable>
     </Pressable>
   );

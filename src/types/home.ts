@@ -22,4 +22,5 @@ export type RecommendationItem = {
   title: string;
   description: string;
   friendUserId?: string;
+  coordinates?: Coordinates;
 };

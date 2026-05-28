@@ -69,8 +69,8 @@ function BlurContainer({
             styles.panel,
             isCentered ? styles.panelCentered : styles.panelBottom,
             {
-              height: isCentered ? undefined : panelHeight,
-              maxHeight: isCentered ? panelHeight : undefined,
+              height: panelHeight,
+              maxHeight: panelHeight,
               width: windowWidth - horizontalInset * 2,
               marginHorizontal: horizontalInset,
             },

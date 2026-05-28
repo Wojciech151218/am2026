@@ -429,7 +429,13 @@ function GoogleMapsPreviewCard({
       ) : null}
       {!loading && !hasMapContent ? <Text style={styles.helper}>Map data not available yet.</Text> : null}
 
-      <BlurContainer visible={expanded} onClose={() => setExpandedState(false)} expandedFraction={0.88}>
+      <BlurContainer
+        visible={expanded}
+        onClose={() => setExpandedState(false)}
+        expandedFraction={0.88}
+        position="center"
+        horizontalInset={20}
+        showHandle={false}>
         {mapProps ? (
           <View style={styles.expandedBody}>
             <MapContent {...mapProps} expanded />

@@ -20,4 +20,6 @@ export type FriendLocationSearchResult = SearchResult & {
   friendUserId: string;
   distanceKm: number;
   rating: number;
+  isFriendResult?: boolean;
+  visitedAtIso?: string;
 };

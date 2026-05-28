@@ -11,16 +11,15 @@ import {useCompassApi} from '../hooks/useCompassApi';
 import {useWeatherApi} from '../hooks/useWeatherApi';
 
 function HomeScreen() {
-  const [scrollBlocked, setScrollBlocked] = useState(false);
+  const [mapInteracting, setMapInteracting] = useState(false);
+  const [mapExpanded, setMapExpanded] = useState(false);
   const mapData = useHomeMapData();
   const center = mapData.data.center;
   const weatherApi = useWeatherApi(center);
   const compassApi = useCompassApi();
   const friendsLocations = useFriendsLocationsRecommendations(center);
 
-  const onOverlayChange = (blocked: boolean) => {
-    setScrollBlocked(blocked);
-  };
+  const scrollBlocked = mapInteracting || mapExpanded;
 
   return (
     <View style={styles.safeArea}>
@@ -34,8 +33,8 @@ function HomeScreen() {
           markers={mapData.data.markers}
           initialCenter={center}
           initialZoom={mapData.data.zoom}
-          onMapInteractionChange={interacting => onOverlayChange(interacting)}
-          onExpandedChange={onOverlayChange}
+          onMapInteractionChange={setMapInteracting}
+          onExpandedChange={setMapExpanded}
         />
 
         <CurrentLocationPlaceCard

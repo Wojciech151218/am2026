@@ -8,9 +8,7 @@ import {getUserById} from '../repositories/userRepository';
 
 export type SearchFriendLocationsParams = {
   currentUserId: string;
-  query: string;
-  maxDistanceKm: number;
-  minRating: number;
+  query?: string;
   limit?: number;
 };
 
@@ -18,8 +16,8 @@ export async function searchFriendLocations(
   params: SearchFriendLocationsParams,
 ): Promise<FriendLocationSearchResult[]> {
   const db = getDatabase();
-  const limit = params.limit ?? 30;
-  const trimmed = params.query.trim().toLowerCase();
+  const limit = params.limit ?? 10;
+  const trimmed = params.query?.trim().toLowerCase() ?? '';
   const currentUser = await getUserById(params.currentUserId);
 
   const origin: Coordinates | null =
@@ -61,37 +59,15 @@ export async function searchFriendLocations(
         return false;
       }
     }
-
-    const rating = Math.max(
-      ratingFromVisitedAtIso(location.visitedAtIso),
-      origin
-        ? ratingFromDistanceKm(
-            distanceKm(origin, {
-              latitude: location.latitude,
-              longitude: location.longitude,
-            }),
-          )
-        : 1,
-    );
-
-    if (rating < params.minRating) {
-      return false;
-    }
-
-    if (origin) {
-      const km = distanceKm(origin, {
-        latitude: location.latitude,
-        longitude: location.longitude,
-      });
-      if (km > params.maxDistanceKm) {
-        return false;
-      }
-    }
-
     return true;
   });
 
-  const results = filtered.map(({location, friend}) => {
+  const results = filtered
+    .sort(
+      (a, b) =>
+        new Date(b.location.visitedAtIso).getTime() - new Date(a.location.visitedAtIso).getTime(),
+    )
+    .map(({location, friend}) => {
     const friendName = friend.displayName || 'Friend';
     const km = origin
       ? distanceKm(origin, {
@@ -108,13 +84,15 @@ export async function searchFriendLocations(
       id: location.id,
       title: `${friendName} · ${location.label}`,
       subtitle: km != null ? `${km.toFixed(1)} km · ${location.city || 'Unknown city'}` : location.city,
-      tags: [`★${rating}`, friendName],
+      tags: [`★${rating}`, friendName, 'friend'],
       friendUserId: friend.id,
       distanceKm: km ?? 0,
       rating,
+      placeCoordinates: {latitude: location.latitude, longitude: location.longitude},
+      isFriendResult: true,
+      visitedAtIso: location.visitedAtIso,
     };
   });
 
-  results.sort((a, b) => a.distanceKm - b.distanceKm);
   return results.slice(0, limit);
 }

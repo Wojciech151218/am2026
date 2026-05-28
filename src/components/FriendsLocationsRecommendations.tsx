@@ -1,7 +1,7 @@
-import React, {useState} from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
-import BlurContainer from './BlurContainer';
-import FriendProfileByIdPreview from './FriendProfileByIdPreview';
+import React from 'react';
+import {Linking, StyleSheet, Text, View} from 'react-native';
+import {googleMapsUrl} from '../api/googleGeocoding';
+import LocationPressableCard from './LocationPressableCard';
 import type {RecommendationItem} from '../types/home';
 
 type FriendsLocationsRecommendationsProps = {
@@ -15,13 +15,11 @@ function FriendsLocationsRecommendations({
   error,
   items,
 }: FriendsLocationsRecommendationsProps) {
-  const [previewItem, setPreviewItem] = useState<RecommendationItem | null>(null);
-
   const onPressItem = (item: RecommendationItem) => {
-    if (!item.friendUserId) {
+    if (!item.coordinates) {
       return;
     }
-    setPreviewItem(item);
+    Linking.openURL(googleMapsUrl(item.coordinates)).catch(() => null);
   };
 
   return (
@@ -37,30 +35,16 @@ function FriendsLocationsRecommendations({
           </Text>
         ) : null}
         {items.map(item => (
-          <Pressable
+          <LocationPressableCard
             key={item.id}
-            style={({pressed}) => [styles.card, pressed && styles.cardPressed]}
-            onPress={() => onPressItem(item)}
-            disabled={!item.friendUserId}
-            accessibilityRole="button">
-            <Text style={styles.cardTitle}>{item.title}</Text>
-            <Text style={styles.helper}>{item.description}</Text>
-          </Pressable>
+            title={item.title}
+            subtitle={item.description}
+            highlighted
+            onPress={item.coordinates ? () => onPressItem(item) : undefined}
+            tags={item.coordinates ? ['Open in Google Maps'] : []}
+          />
         ))}
       </View>
-
-      <BlurContainer
-        visible={previewItem != null}
-        onClose={() => setPreviewItem(null)}
-        expandedFraction={0.85}>
-        {previewItem?.friendUserId ? (
-          <FriendProfileByIdPreview
-            userId={previewItem.friendUserId}
-            fallbackTitle={previewItem.title}
-            fallbackDescription={previewItem.description}
-          />
-        ) : null}
-      </BlurContainer>
     </>
   );
 }
@@ -78,23 +62,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#0F172A',
-  },
-  card: {
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 10,
-    padding: 10,
-    backgroundColor: '#F8FAFC',
-  },
-  cardPressed: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#BFDBFE',
-  },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginBottom: 2,
   },
   helper: {
     fontSize: 12,

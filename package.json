@@ -26,6 +26,7 @@
     "react-native-gesture-handler": "^2.31.2",
     "react-native-maps": "^1.27.2",
     "react-native-safe-area-context": "^5.5.2",
+    "react-native-svg": "^15.15.5",
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {

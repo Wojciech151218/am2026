@@ -1,5 +1,7 @@
 import React, {useEffect, useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {Linking, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {googleMapsUrl} from '../api/googleGeocoding';
+import LocationPressableCard from '../components/LocationPressableCard';
 import ProfileFieldsForm from '../components/ProfileFieldsForm';
 import {formatHistoryDate} from '../utils/formatDate';
 import {useProfileLocationHistory} from '../hooks/db/useProfileLocationHistory';
@@ -37,6 +39,7 @@ function ProfileScreen({immutableProfile, embedded = false}: ProfileScreenProps)
     userId: isImmutable ? '' : historyUserId,
     pageSize: HISTORY_PAGE_SIZE,
   });
+  const {reset: resetLocationHistory} = locationHistory;
 
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
@@ -50,14 +53,14 @@ function ProfileScreen({immutableProfile, embedded = false}: ProfileScreenProps)
     setDisplayName(profile.displayName ?? '');
     setBio(profile.bio);
     setHomeCity(profile.homeCity ?? '');
-  }, [profile?.id, profile?.displayName, profile?.bio, profile?.homeCity]);
+  }, [profile]);
 
   useEffect(() => {
     if (isImmutable || !historyUserId || !isLocalDbEnabled || !ready) {
       return;
     }
-    locationHistory.reset().catch(() => null);
-  }, [historyUserId, isLocalDbEnabled, ready, isImmutable]);
+    resetLocationHistory().catch(() => null);
+  }, [historyUserId, isLocalDbEnabled, ready, isImmutable, resetLocationHistory]);
 
   const onToggleLocationSharing = async () => {
     if (!profile || isImmutable) {
@@ -79,7 +82,7 @@ function ProfileScreen({immutableProfile, embedded = false}: ProfileScreenProps)
     if (success) {
       setEditing(false);
       await profileApi.refetch();
-      await locationHistory.reset();
+      await resetLocationHistory();
     }
   };
 
@@ -201,11 +204,15 @@ function ProfileScreen({immutableProfile, embedded = false}: ProfileScreenProps)
                   const area =
                     item.city?.trim() && item.city.trim() !== placeName ? item.city.trim() : null;
                   return (
-                    <View key={item.id} style={styles.historyItem}>
-                      <Text style={styles.historyTitle}>{placeName}</Text>
-                      {area ? <Text style={styles.historyArea}>{area}</Text> : null}
-                      <Text style={styles.historyDate}>{formatHistoryDate(item.visitedAt)}</Text>
-                    </View>
+                    <LocationPressableCard
+                      key={item.id}
+                      title={placeName}
+                      subtitle={area ?? ''}
+                      tags={[formatHistoryDate(item.visitedAt)]}
+                      onPress={() =>
+                        Linking.openURL(googleMapsUrl(item.coordinates)).catch(() => null)
+                      }
+                    />
                   );
                 })
               )}
@@ -279,31 +286,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0F172A',
   },
-  historyItem: {
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 10,
-    backgroundColor: '#F8FAFC',
-    padding: 8,
-    gap: 2,
-  },
   helper: {
     fontSize: 12,
     color: '#475569',
-  },
-  historyTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  historyArea: {
-    fontSize: 12,
-    color: '#64748B',
-  },
-  historyDate: {
-    fontSize: 12,
-    color: '#475569',
-    marginTop: 2,
   },
   status: {
     fontSize: 12,

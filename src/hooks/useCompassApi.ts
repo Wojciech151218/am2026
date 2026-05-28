@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useState} from 'react';
+import {Platform} from 'react-native';
+import CompassHeading from 'react-native-compass-heading';
 import type {CompassData} from '../types/home';
-import {mockDelay} from './mockApi';
 
 type UseCompassApiResult = {
   data: CompassData | null;
@@ -24,29 +25,52 @@ function toCardinal(heading: number): string {
 
 export function useCompassApi(): UseCompassApiResult {
   const [data, setData] = useState<CompassData | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      await mockDelay(250);
-      const headingDegrees = 72;
-      setData({
-        headingDegrees,
-        cardinalDirection: toCardinal(headingDegrees),
-      });
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Unable to load compass.');
-    } finally {
-      setLoading(false);
-    }
+    // No-op: compass updates from sensor subscription when available.
+    return Promise.resolve();
   }, []);
 
   useEffect(() => {
-    refetch().catch(() => null);
-  }, [refetch]);
+    if (Platform.OS === 'web') {
+      const fallbackHeading = 0;
+      setData({headingDegrees: fallbackHeading, cardinalDirection: toCardinal(fallbackHeading)});
+      setError('Compass sensor unavailable on web.');
+      setLoading(false);
+      return;
+    }
+
+    let cleanup: (() => void) | null = null;
+    try {
+      CompassHeading.start(3, ({heading}: {heading: number}) => {
+        const normalized = ((heading % 360) + 360) % 360;
+        setData({
+          headingDegrees: normalized,
+          cardinalDirection: toCardinal(normalized),
+        });
+        setError(null);
+        setLoading(false);
+      });
+      cleanup = () => {
+        CompassHeading.stop();
+      };
+    } catch (requestError) {
+      const fallbackHeading = 0;
+      setData({headingDegrees: fallbackHeading, cardinalDirection: toCardinal(fallbackHeading)});
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'Unable to access compass sensor.',
+      );
+      setLoading(false);
+    }
+
+    return () => {
+      cleanup?.();
+    };
+  }, []);
 
   return {data, loading, error, refetch};
 }
