@@ -11,6 +11,7 @@ export type SharedLocation = Coordinates & {
 export type LocationHistoryItem = {
   id: string;
   label: string;
+  city?: string;
   coordinates: Coordinates;
   visitedAt: string;
 };

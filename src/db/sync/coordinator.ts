@@ -23,7 +23,7 @@ export async function startDbSync(user: User): Promise<void> {
 
   syncInterval = setInterval(() => {
     processOutboundSyncQueue().catch(() => null);
-  }, 5000);
+  }, 4000);
 }
 
 export async function stopDbSync(): Promise<void> {

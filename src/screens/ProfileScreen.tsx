@@ -1,6 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import ProfileFieldsForm from '../components/ProfileFieldsForm';
+import {formatHistoryDate} from '../utils/formatDate';
 import {useProfileLocationHistory} from '../hooks/db/useProfileLocationHistory';
 import {useProfileQuery} from '../hooks/db/useProfileQuery';
 import {useDb} from '../hooks/db/useDb';
@@ -96,7 +97,7 @@ function ProfileScreen({immutableProfile, embedded = false}: ProfileScreenProps)
   const content = (
     <>
       {!embedded ? <Text style={styles.heading}>Profile</Text> : null}
-      {profileApi.loading && !profile ? <Text style={styles.status}>Loading profile...</Text> : null}
+      {profileApi.loading && !profile ? <Text style={styles.status}>Loading your profile...</Text> : null}
       {profileApi.error && !isImmutable ? <Text style={styles.status}>{profileApi.error}</Text> : null}
       {profile ? (
         <>
@@ -186,7 +187,7 @@ function ProfileScreen({immutableProfile, embedded = false}: ProfileScreenProps)
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Location history</Text>
               {locationHistory.loading && historyItems.length === 0 ? (
-                <Text style={styles.status}>Loading history...</Text>
+                <Text style={styles.status}>Loading places you've visited...</Text>
               ) : null}
               {locationHistory.error ? <Text style={styles.status}>{locationHistory.error}</Text> : null}
               {historyItems.length === 0 ? (
@@ -195,15 +196,18 @@ function ProfileScreen({immutableProfile, embedded = false}: ProfileScreenProps)
                   friends.
                 </Text>
               ) : (
-                historyItems.map(item => (
-                  <View key={item.id} style={styles.historyItem}>
-                    <Text style={styles.historyTitle}>{item.label}</Text>
-                    <Text style={styles.helper}>
-                      {item.coordinates.latitude.toFixed(2)}, {item.coordinates.longitude.toFixed(2)}
-                    </Text>
-                    <Text style={styles.helper}>{new Date(item.visitedAt).toLocaleString()}</Text>
-                  </View>
-                ))
+                historyItems.map(item => {
+                  const placeName = item.label?.trim() || item.city?.trim() || 'Unknown place';
+                  const area =
+                    item.city?.trim() && item.city.trim() !== placeName ? item.city.trim() : null;
+                  return (
+                    <View key={item.id} style={styles.historyItem}>
+                      <Text style={styles.historyTitle}>{placeName}</Text>
+                      {area ? <Text style={styles.historyArea}>{area}</Text> : null}
+                      <Text style={styles.historyDate}>{formatHistoryDate(item.visitedAt)}</Text>
+                    </View>
+                  );
+                })
               )}
               {!isImmutable && locationHistory.hasMore ? (
                 <Pressable
@@ -288,9 +292,18 @@ const styles = StyleSheet.create({
     color: '#475569',
   },
   historyTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1E293B',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  historyArea: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  historyDate: {
+    fontSize: 12,
+    color: '#475569',
+    marginTop: 2,
   },
   status: {
     fontSize: 12,

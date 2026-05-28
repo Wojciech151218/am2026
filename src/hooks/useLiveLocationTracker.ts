@@ -1,7 +1,9 @@
 import {useCallback, useEffect, useRef} from 'react';
 import {Platform} from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
+import {reverseGeocode} from '../api/googleGeocoding';
 import {flushOutboundSync} from '../db/sync/coordinator';
+import {distanceKm} from '../db/utils/geo';
 import {
   clearCurrentCoordinates,
   updateCurrentCoordinates,
@@ -12,44 +14,56 @@ type UseLiveLocationTrackerOptions = {
   trackingEnabled: boolean;
 };
 
-const DEBOUNCE_MS = 3000;
-const MIN_DISTANCE_M = 25;
-
-function formatCoordsLabel(latitude: number, longitude: number): string {
-  return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-}
+const DEBOUNCE_MS = 2000;
+const MIN_DISTANCE_KM = 0.025;
 
 export function useLiveLocationTracker({trackingEnabled}: UseLiveLocationTrackerOptions): void {
   const {currentUserId, isLocalDbEnabled, ready} = useDb();
   const watchIdRef = useRef<number | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastWriteRef = useRef<{lat: number; lng: number} | null>(null);
+  const geocodeCacheRef = useRef<Map<string, string>>(new Map());
+
+  const resolveLabel = useCallback(async (latitude: number, longitude: number): Promise<string> => {
+    const cacheKey = `${latitude.toFixed(3)},${longitude.toFixed(3)}`;
+    const cached = geocodeCacheRef.current.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      const place = await reverseGeocode({latitude, longitude});
+      const label = place.label.trim() || 'Current location';
+      geocodeCacheRef.current.set(cacheKey, label);
+      return label;
+    } catch {
+      return 'Current location';
+    }
+  }, []);
 
   const writePosition = useCallback(
-    async (latitude: number, longitude: number) => {
+    async (latitude: number, longitude: number, force = false) => {
       if (!currentUserId || !isLocalDbEnabled || !ready) {
         return;
       }
 
       const last = lastWriteRef.current;
-      if (last) {
-        const dLat = latitude - last.lat;
-        const dLng = longitude - last.lng;
-        const approxM = Math.sqrt(dLat * dLat + dLng * dLng) * 111_000;
-        if (approxM < MIN_DISTANCE_M) {
+      if (last && !force) {
+        const movedKm = distanceKm(
+          {latitude: last.lat, longitude: last.lng},
+          {latitude, longitude},
+        );
+        if (movedKm < MIN_DISTANCE_KM) {
           return;
         }
       }
 
       lastWriteRef.current = {lat: latitude, lng: longitude};
-      await updateCurrentCoordinates(currentUserId, {
-        latitude,
-        longitude,
-        label: formatCoordsLabel(latitude, longitude),
-      });
+      const label = await resolveLabel(latitude, longitude);
+      await updateCurrentCoordinates(currentUserId, {latitude, longitude, label});
       await flushOutboundSync().catch(() => null);
     },
-    [currentUserId, isLocalDbEnabled, ready],
+    [currentUserId, isLocalDbEnabled, ready, resolveLabel],
   );
 
   useEffect(() => {
@@ -72,8 +86,18 @@ export function useLiveLocationTracker({trackingEnabled}: UseLiveLocationTracker
       stopWatch();
       clearCurrentCoordinates(currentUserId).catch(() => null);
       lastWriteRef.current = null;
+      geocodeCacheRef.current.clear();
       return stopWatch;
     }
+
+    Geolocation.getCurrentPosition(
+      position => {
+        const {latitude, longitude} = position.coords;
+        writePosition(latitude, longitude, true).catch(() => null);
+      },
+      () => undefined,
+      {enableHighAccuracy: false, timeout: 12_000, maximumAge: 60_000},
+    );
 
     watchIdRef.current = Geolocation.watchPosition(
       position => {
@@ -88,9 +112,9 @@ export function useLiveLocationTracker({trackingEnabled}: UseLiveLocationTracker
       () => undefined,
       {
         enableHighAccuracy: true,
-        distanceFilter: MIN_DISTANCE_M,
-        interval: 10_000,
-        fastestInterval: 5_000,
+        distanceFilter: 20,
+        interval: 8_000,
+        fastestInterval: 4_000,
       },
     );
 

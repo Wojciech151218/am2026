@@ -172,6 +172,12 @@ export async function removeFriend(
   return true;
 }
 
+export async function deleteFriendshipById(friendshipId: string): Promise<void> {
+  const db = getDatabase();
+  await db.delete(friendships).where(eq(friendships.id, friendshipId));
+  notifyDbChanged();
+}
+
 export async function findFriendshipBetween(
   userAId: string,
   userBId: string,

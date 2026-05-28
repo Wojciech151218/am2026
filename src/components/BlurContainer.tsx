@@ -7,6 +7,7 @@ import {
   Text,
   useWindowDimensions,
   View,
+  type ViewStyle,
 } from 'react-native';
 
 let BlurViewComponent: React.ComponentType<{style?: object; blurType?: string; blurAmount?: number}> | null =
@@ -27,6 +28,11 @@ type BlurContainerProps = {
   onClose: () => void;
   children: React.ReactNode;
   expandedFraction?: number;
+  /** Bottom sheet (default) or vertically centered panel. */
+  position?: 'bottom' | 'center';
+  showHandle?: boolean;
+  contentStyle?: ViewStyle;
+  horizontalInset?: number;
 };
 
 function BlurContainer({
@@ -34,9 +40,14 @@ function BlurContainer({
   onClose,
   children,
   expandedFraction = 0.85,
+  position = 'bottom',
+  showHandle = true,
+  contentStyle,
+  horizontalInset = 0,
 }: BlurContainerProps) {
-  const {height: windowHeight} = useWindowDimensions();
+  const {height: windowHeight, width: windowWidth} = useWindowDimensions();
   const panelHeight = Math.round(windowHeight * expandedFraction);
+  const isCentered = position === 'center';
 
   return (
     <Modal
@@ -45,15 +56,26 @@ function BlurContainer({
       animationType="fade"
       onRequestClose={onClose}
       statusBarTranslucent>
-      <View style={styles.root}>
+      <View style={[styles.root, isCentered && styles.rootCentered]}>
         <Pressable style={styles.backdropPressable} onPress={onClose} accessibilityLabel="Close">
           {BlurViewComponent ? (
-            <BlurViewComponent style={StyleSheet.absoluteFill} blurType="dark" blurAmount={12} />
+            <BlurViewComponent style={StyleSheet.absoluteFill} blurType="dark" blurAmount={14} />
           ) : null}
           <View style={styles.dimOverlay} />
         </Pressable>
 
-        <View style={[styles.panel, {height: panelHeight}]}>
+        <View
+          style={[
+            styles.panel,
+            isCentered ? styles.panelCentered : styles.panelBottom,
+            {
+              height: isCentered ? undefined : panelHeight,
+              maxHeight: isCentered ? panelHeight : undefined,
+              width: windowWidth - horizontalInset * 2,
+              marginHorizontal: horizontalInset,
+            },
+          ]}>
+          {showHandle ? <View style={styles.handle} /> : null}
           <Pressable
             style={styles.closeButton}
             onPress={onClose}
@@ -61,7 +83,7 @@ function BlurContainer({
             accessibilityLabel="Close">
             <Text style={styles.closeButtonText}>✕</Text>
           </Pressable>
-          <View style={styles.panelContent}>{children}</View>
+          <View style={[styles.panelContent, contentStyle]}>{children}</View>
         </View>
       </View>
     </Modal>
@@ -73,23 +95,45 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
   },
+  rootCentered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
   backdropPressable: {
     ...StyleSheet.absoluteFill,
   },
   dimOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
   },
   panel: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderRadius: 16,
     shadowColor: '#0F172A',
     shadowOffset: {width: 0, height: -4},
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
     elevation: 16,
     overflow: 'hidden',
+  },
+  panelBottom: {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+  },
+  panelCentered: {
+    borderRadius: 18,
+  },
+  handle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#CBD5E1',
+    marginTop: 10,
+    marginBottom: 4,
   },
   closeButton: {
     position: 'absolute',
@@ -111,9 +155,9 @@ const styles = StyleSheet.create({
   },
   panelContent: {
     flex: 1,
-    paddingTop: 44,
-    paddingHorizontal: 12,
-    paddingBottom: 12,
+    paddingTop: 36,
+    paddingHorizontal: 14,
+    paddingBottom: 14,
   },
 });
 

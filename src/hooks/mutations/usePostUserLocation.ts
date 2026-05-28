@@ -13,7 +13,7 @@ type PostUserLocationInput = Coordinates & {
 type UsePostUserLocationResult = {
   loading: boolean;
   error: string | null;
-  postUserLocation: (input: PostUserLocationInput) => Promise<void>;
+  postUserLocation: (input: PostUserLocationInput) => Promise<boolean>;
 };
 
 export function usePostUserLocation(): UsePostUserLocationResult {
@@ -25,12 +25,12 @@ export function usePostUserLocation(): UsePostUserLocationResult {
     async (input: PostUserLocationInput) => {
       if (!currentUserId) {
         setError('You must be signed in to post a location.');
-        return;
+        return false;
       }
 
       if (Platform.OS === 'web' || !isLocalDbEnabled) {
         setError('Local database is only available on native platforms.');
-        return;
+        return false;
       }
 
       setLoading(true);
@@ -44,8 +44,10 @@ export function usePostUserLocation(): UsePostUserLocationResult {
           longitude: input.longitude,
         });
         await flushOutboundSync();
+        return true;
       } catch (mutationError) {
         setError(mutationError instanceof Error ? mutationError.message : 'Unable to post location.');
+        return false;
       } finally {
         setLoading(false);
       }

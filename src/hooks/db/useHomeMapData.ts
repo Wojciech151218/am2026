@@ -1,10 +1,11 @@
-import {useCallback, useEffect, useMemo, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Platform} from 'react-native';
 import {nearbyPlaceToMapMarker, searchNearbyPlaces, type NearbyPlace} from '../../api/place/nearbysearch';
 import {
   fetchFriendsSharedLocationsForHome,
   getCurrentUserCoordinates,
 } from '../../db/queries/friendsSharedLocations';
+import {distanceKm} from '../../db/utils/geo';
 import {getUserById} from '../../db/repositories/userRepository';
 import type {MapMarker} from '../../types/map';
 import type {Coordinates} from '../../types/location';
@@ -13,6 +14,7 @@ import {useLocalQuery} from './useLocalQuery';
 
 const defaultCoordinates: Coordinates = {latitude: 52.2297, longitude: 21.0122};
 const DEFAULT_ZOOM = 13;
+const NEARBY_REFRESH_DISTANCE_KM = 0.5;
 
 type LocalHomeMapData = {
   center: Coordinates;
@@ -38,6 +40,7 @@ export function useHomeMapData(): UseHomeMapDataResult {
   const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlace[]>([]);
   const [placesLoading, setPlacesLoading] = useState(false);
   const [placesError, setPlacesError] = useState<string | null>(null);
+  const lastNearbyCenterRef = useRef<Coordinates | null>(null);
 
   const queryFn = useCallback(async (): Promise<LocalHomeMapData> => {
     if (!currentUserId) {
@@ -100,21 +103,34 @@ export function useHomeMapData(): UseHomeMapDataResult {
 
   const searchCenter = localQuery.data.center;
 
-  const fetchNearby = useCallback(async () => {
-    setPlacesLoading(true);
-    setPlacesError(null);
-    try {
-      const places = await searchNearbyPlaces(searchCenter);
-      setNearbyPlaces(places);
-    } catch (requestError) {
-      setPlacesError(
-        requestError instanceof Error ? requestError.message : 'Unable to load nearby places.',
-      );
-      setNearbyPlaces([]);
-    } finally {
-      setPlacesLoading(false);
-    }
-  }, [searchCenter.latitude, searchCenter.longitude]);
+  const fetchNearby = useCallback(
+    async (force = false) => {
+      const lastCenter = lastNearbyCenterRef.current;
+      if (
+        !force &&
+        lastCenter &&
+        distanceKm(lastCenter, searchCenter) < NEARBY_REFRESH_DISTANCE_KM
+      ) {
+        return;
+      }
+
+      lastNearbyCenterRef.current = searchCenter;
+      setPlacesLoading(true);
+      setPlacesError(null);
+      try {
+        const places = await searchNearbyPlaces(searchCenter);
+        setNearbyPlaces(places);
+      } catch (requestError) {
+        setPlacesError(
+          requestError instanceof Error ? requestError.message : 'Unable to load nearby places.',
+        );
+        setNearbyPlaces([]);
+      } finally {
+        setPlacesLoading(false);
+      }
+    },
+    [searchCenter.latitude, searchCenter.longitude],
+  );
 
   useEffect(() => {
     if (Platform.OS === 'web' || !isLocalDbEnabled || !ready) {
@@ -146,7 +162,7 @@ export function useHomeMapData(): UseHomeMapDataResult {
   }, [localQuery.data, nearbyPlaces]);
 
   const refetch = useCallback(async () => {
-    await Promise.all([localQuery.refetch(), fetchNearby()]);
+    await Promise.all([localQuery.refetch(), fetchNearby(true)]);
   }, [fetchNearby, localQuery.refetch]);
 
   if (Platform.OS === 'web' || !isLocalDbEnabled || !ready || !currentUserId) {

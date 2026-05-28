@@ -76,6 +76,12 @@ export async function appendLocationSnapshot(input: AppendLocationInput): Promis
   return {...row, city};
 }
 
+export async function deleteLocationById(locationId: string): Promise<void> {
+  const db = getDatabase();
+  await db.delete(locations).where(eq(locations.id, locationId));
+  notifyDbChanged();
+}
+
 export type LocationHistoryFilters = {
   userId: string;
   city?: string;

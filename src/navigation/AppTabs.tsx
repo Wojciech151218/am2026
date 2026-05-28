@@ -1,6 +1,7 @@
-import React from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import React, {useRef} from 'react';
+import {PanResponder, Pressable, StyleSheet, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import AppLoadingView from '../components/AppLoadingView';
 import BottomTabIcon from '../components/BottomTabIcon';
 import {useProfileQuery} from '../hooks/db/useProfileQuery';
 import {useLiveLocationTracker} from '../hooks/useLiveLocationTracker';
@@ -17,6 +18,9 @@ const tabs: AppTabConfig[] = [
   {id: 'Social', label: 'Social'},
   {id: 'Profile', label: 'Profile'},
 ];
+
+const TAB_ORDER: AppTabId[] = ['Home', 'Search', 'Social', 'Profile'];
+const SWIPE_THRESHOLD_PX = 56;
 
 function ActiveTabScreen({tabId}: {tabId: AppTabId}) {
   if (tabId === 'Home') {
@@ -44,12 +48,28 @@ function AppTabs() {
     trackingEnabled: profile?.settings.locationSharingEnabled ?? false,
   });
 
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gesture) =>
+        Math.abs(gesture.dx) > Math.abs(gesture.dy) && Math.abs(gesture.dx) > 12,
+      onPanResponderRelease: (_, gesture) => {
+        const currentIndex = TAB_ORDER.indexOf(activeTabRef.current);
+        if (gesture.dx <= -SWIPE_THRESHOLD_PX && currentIndex < TAB_ORDER.length - 1) {
+          setActiveTab(TAB_ORDER[currentIndex + 1]);
+        } else if (gesture.dx >= SWIPE_THRESHOLD_PX && currentIndex > 0) {
+          setActiveTab(TAB_ORDER[currentIndex - 1]);
+        }
+      },
+    }),
+  ).current;
+
   if (awaitingProfile) {
     return (
       <View style={styles.container}>
-        <View style={styles.loadingScene}>
-          <Text style={styles.loadingText}>Loading profile...</Text>
-        </View>
+        <AppLoadingView title="Loading your profile" subtitle="Almost there..." />
       </View>
     );
   }
@@ -64,7 +84,9 @@ function AppTabs() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.scene, {paddingBottom: tabBarHeight}]}>
+      <View
+        style={[styles.scene, {paddingBottom: tabBarHeight}]}
+        {...panResponder.panHandlers}>
         <ActiveTabScreen tabId={activeTab} />
       </View>
       <View style={[styles.tabBar, {height: tabBarHeight, paddingBottom: Math.max(insets.bottom, 8)}]}>
@@ -111,15 +133,6 @@ const styles = StyleSheet.create({
   tabButton: {
     flex: 1,
     alignItems: 'center',
-  },
-  loadingScene: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    fontSize: 13,
-    color: '#475569',
   },
 });
 

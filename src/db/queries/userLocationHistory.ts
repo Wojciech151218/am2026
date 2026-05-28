@@ -27,6 +27,7 @@ export async function fetchUserLocationHistory(
   return rows.map(row => ({
     id: row.id,
     label: row.label,
+    city: row.city || undefined,
     coordinates: {
       latitude: row.latitude,
       longitude: row.longitude,

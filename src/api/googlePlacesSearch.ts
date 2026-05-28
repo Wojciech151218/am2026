@@ -1,4 +1,5 @@
 import {env} from '../config/env';
+import {sortPlacesByRelevance} from './placeRanking';
 import {distanceKm} from '../db/utils/geo';
 import type {SearchResult} from '../types/search';
 import type {Coordinates} from '../types/location';
@@ -10,6 +11,7 @@ type PlacesTextSearchResponse = {
     formatted_address?: string;
     geometry?: {location?: {lat: number; lng: number}};
     rating?: number;
+    types?: string[];
   }>;
   status?: string;
 };
@@ -43,7 +45,9 @@ export async function searchNearbyPlaces(
     return mockPlaces(trimmed, origin);
   }
 
-  return (data.results ?? []).slice(0, limit).map(place => {
+  const ranked = sortPlacesByRelevance(data.results ?? []);
+
+  return ranked.slice(0, limit).map(place => {
     const lat = place.geometry?.location?.lat;
     const lng = place.geometry?.location?.lng;
     const km =
@@ -58,7 +62,11 @@ export async function searchNearbyPlaces(
         km != null
           ? `${km.toFixed(1)} km · ${place.formatted_address ?? ''}`
           : (place.formatted_address ?? 'Nearby place'),
-      tags: ['place', place.rating != null ? `★${Math.round(place.rating)}` : 'maps'],
+      tags: [
+        'place',
+        ...(place.types?.slice(0, 2).map(type => type.replaceAll('_', ' ')) ?? []),
+        place.rating != null ? `★${Math.round(place.rating)}` : 'maps',
+      ],
       placeCoordinates:
         lat != null && lng != null ? {latitude: lat, longitude: lng} : undefined,
     };

@@ -8,12 +8,14 @@ type DbContextValue = {
   currentUserId: string | null;
   ready: boolean;
   isLocalDbEnabled: boolean;
+  syncError: string | null;
 };
 
 const DbContext = createContext<DbContextValue>({
   currentUserId: null,
   ready: Platform.OS === 'web',
   isLocalDbEnabled: false,
+  syncError: null,
 });
 
 type DbProviderProps = {
@@ -23,25 +25,32 @@ type DbProviderProps = {
 
 export function DbProvider({user, children}: DbProviderProps) {
   const [ready, setReady] = useState(Platform.OS === 'web');
+  const [syncError, setSyncError] = useState<string | null>(null);
   const isLocalDbEnabled = isNativeDbSupported();
 
   useEffect(() => {
     if (!user || !isLocalDbEnabled) {
+      setSyncError(null);
       setReady(true);
       return () => undefined;
     }
 
     let cancelled = false;
     setReady(false);
+    setSyncError(null);
 
     startDbSync(user)
       .then(() => {
         if (!cancelled) {
+          setSyncError(null);
           setReady(true);
         }
       })
-      .catch(() => {
+      .catch(error => {
         if (!cancelled) {
+          setSyncError(
+            error instanceof Error ? error.message : 'Unable to start cloud sync.',
+          );
           setReady(true);
         }
       });
@@ -57,8 +66,9 @@ export function DbProvider({user, children}: DbProviderProps) {
       currentUserId: user?.uid ?? null,
       ready,
       isLocalDbEnabled,
+      syncError,
     }),
-    [user?.uid, ready, isLocalDbEnabled],
+    [user?.uid, ready, isLocalDbEnabled, syncError],
   );
 
   return <DbContext.Provider value={value}>{children}</DbContext.Provider>;

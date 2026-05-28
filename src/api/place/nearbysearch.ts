@@ -1,4 +1,5 @@
 import {env} from '../../config/env';
+import {sortPlacesByRelevance} from '../placeRanking';
 import type {GooglePlaceMetadata} from '../../types/map';
 import type {Coordinates} from '../../types/location';
 
@@ -72,7 +73,7 @@ export async function searchNearbyPlaces(
     });
   }
 
-  return places.slice(0, limit);
+  return sortPlacesByRelevance(places).slice(0, limit);
 }
 
 function mockNearbyPlaces(origin: Coordinates): NearbyPlace[] {

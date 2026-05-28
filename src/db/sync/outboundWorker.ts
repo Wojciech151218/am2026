@@ -11,6 +11,7 @@ import {mapLocalUserToFirestore} from './mappers';
 import {getUserById} from '../repositories/userRepository';
 
 const MAX_BATCH = 20;
+const MAX_RETRIES = 5;
 
 let processing = false;
 
@@ -41,11 +42,12 @@ export async function processOutboundSyncQueue(): Promise<void> {
 
         await db.delete(syncMutations).where(eq(syncMutations.id, mutation.id));
       } catch {
+        const nextRetryCount = mutation.retryCount + 1;
         await db
           .update(syncMutations)
           .set({
-            status: 'failed',
-            retryCount: mutation.retryCount + 1,
+            status: nextRetryCount < MAX_RETRIES ? 'pending' : 'failed',
+            retryCount: nextRetryCount,
           })
           .where(eq(syncMutations.id, mutation.id));
       }

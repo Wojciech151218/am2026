@@ -1,8 +1,18 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {ActivityIndicator, Linking, Pressable, StyleSheet, Text, View} from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type GestureResponderEvent,
+} from 'react-native';
 import MapView, {Marker, type Region} from 'react-native-maps';
 import BlurContainer from './BlurContainer';
+import {distanceKm} from '../db/utils/geo';
 import {usePostUserLocation} from '../hooks/mutations/usePostUserLocation';
+import {useToast} from './Toast';
 import type {MapMarker, MapMarkerKind} from '../types/map';
 import type {Coordinates} from '../types/location';
 
@@ -20,6 +30,8 @@ type GoogleMapsPreviewCardProps = {
 
 const MAP_EDGE_PADDING = {top: 48, right: 48, bottom: 48, left: 48};
 const PREVIEW_MAP_HEIGHT = 220;
+const PREVIEW_TAP_SLOP_PX = 10;
+const MAP_REFIT_DISTANCE_KM = 0.15;
 
 const MARKER_DOT_COLORS: Record<MapMarkerKind, string> = {
   you: '#22C55E',
@@ -234,6 +246,9 @@ function GoogleMapsPreviewCard({
   const [expanded, setExpanded] = useState(false);
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
   const {loading: posting, error: postError, postUserLocation} = usePostUserLocation();
+  const {showToast} = useToast();
+  const previewTouchRef = useRef({startX: 0, startY: 0, moved: false});
+  const lastFitSignatureRef = useRef<string | null>(null);
 
   const markerCoordinates = useMemo(
     () => markers.map(marker => ({latitude: marker.latitude, longitude: marker.longitude})),
@@ -259,6 +274,31 @@ function GoogleMapsPreviewCard({
     if (markerCoordinates.length === 0) {
       return;
     }
+
+    const signature = markerCoordinates
+      .map(point => `${point.latitude.toFixed(3)},${point.longitude.toFixed(3)}`)
+      .join('|');
+    const lastSignature = lastFitSignatureRef.current;
+    if (lastSignature && lastSignature !== signature) {
+      const lastPoints = lastSignature.split('|').map(pair => {
+        const [lat, lng] = pair.split(',').map(Number);
+        return {latitude: lat, longitude: lng};
+      });
+      const movedLittle =
+        markerCoordinates.length === lastPoints.length &&
+        markerCoordinates.every((point, index) => {
+          const previous = lastPoints[index];
+          if (!previous) {
+            return false;
+          }
+          return distanceKm(point, previous) < MAP_REFIT_DISTANCE_KM;
+        });
+      if (movedLittle && !expanded) {
+        return;
+      }
+    }
+
+    lastFitSignatureRef.current = signature;
     mapRef.current?.fitToCoordinates(markerCoordinates, {
       edgePadding: MAP_EDGE_PADDING,
       animated: true,
@@ -308,13 +348,41 @@ function GoogleMapsPreviewCard({
     const city =
       selectedMarker.place?.address?.split(',').slice(-2).join(',').trim() ||
       selectedMarker.description;
-    await postUserLocation({
+    const success = await postUserLocation({
       latitude: selectedMarker.latitude,
       longitude: selectedMarker.longitude,
       label,
       city,
     });
-  }, [postUserLocation, selectedMarker]);
+    if (success) {
+      showToast('Place saved', {body: label, variant: 'success'});
+    }
+  }, [postUserLocation, selectedMarker, showToast]);
+
+  const onPreviewTouchStart = useCallback(
+    (event: GestureResponderEvent) => {
+      const {pageX, pageY} = event.nativeEvent;
+      previewTouchRef.current = {startX: pageX, startY: pageY, moved: false};
+      handleMapTouchStart();
+    },
+    [handleMapTouchStart],
+  );
+
+  const onPreviewTouchMove = useCallback((event: GestureResponderEvent) => {
+    const {pageX, pageY} = event.nativeEvent;
+    const dx = Math.abs(pageX - previewTouchRef.current.startX);
+    const dy = Math.abs(pageY - previewTouchRef.current.startY);
+    if (dx > PREVIEW_TAP_SLOP_PX || dy > PREVIEW_TAP_SLOP_PX) {
+      previewTouchRef.current.moved = true;
+    }
+  }, []);
+
+  const onPreviewTouchEnd = useCallback(() => {
+    handleMapTouchEnd();
+    if (!previewTouchRef.current.moved) {
+      setExpandedState(true);
+    }
+  }, [handleMapTouchEnd, setExpandedState]);
 
   const hasMapContent = markerCoordinates.length > 0 || initialCenter != null;
   const placeCount = markers.filter(marker => marker.kind === 'place').length;
@@ -335,21 +403,27 @@ function GoogleMapsPreviewCard({
   return (
     <View style={styles.card}>
       <Text style={styles.title}>Google Maps</Text>
-      {loading ? <Text style={styles.helper}>Loading map preview...</Text> : null}
+      {loading ? <Text style={styles.helper}>Updating map...</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {!loading && mapProps ? (
         <>
-          <Pressable onPress={() => setExpandedState(true)} accessibilityRole="button">
+          <View
+            onTouchStart={onPreviewTouchStart}
+            onTouchMove={onPreviewTouchMove}
+            onTouchEnd={onPreviewTouchEnd}
+            onTouchCancel={onPreviewTouchEnd}
+            accessibilityRole="button"
+            accessibilityLabel="Expand map">
             <MapContent {...mapProps} expanded={false} />
-          </Pressable>
+          </View>
           {markers.length > 0 ? (
             <Text style={styles.helper}>
               {markers.length} pin{markers.length === 1 ? '' : 's'}
               {placeCount > 0 ? ` · ${placeCount} nearby place${placeCount === 1 ? '' : 's'}` : ''} · tap
-              to expand
+              to open full map
             </Text>
           ) : (
-            <Text style={styles.helper}>Tap map to expand</Text>
+            <Text style={styles.helper}>Tap to open full map</Text>
           )}
         </>
       ) : null}

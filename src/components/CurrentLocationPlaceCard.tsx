@@ -1,6 +1,7 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {Alert, Pressable, Share, StyleSheet, Text, View} from 'react-native';
+import {Pressable, Share, StyleSheet, Text, View} from 'react-native';
 import {googleMapsUrl, reverseGeocode} from '../api/googleGeocoding';
+import {useToast} from './Toast';
 import type {Coordinates} from '../types/location';
 
 type CurrentLocationPlaceCardProps = {
@@ -17,6 +18,7 @@ function CurrentLocationPlaceCard({
   const [placeLabel, setPlaceLabel] = useState('Current location');
   const [placeSecondary, setPlaceSecondary] = useState('');
   const [geocoding, setGeocoding] = useState(false);
+  const {showToast} = useToast();
 
   useEffect(() => {
     if (!coordinates || !trackingEnabled) {
@@ -62,9 +64,9 @@ function CurrentLocationPlaceCard({
         title: placeLabel,
       });
     } catch {
-      Alert.alert('Share failed', 'Unable to open the share sheet.');
+      showToast('Share failed', {body: 'Unable to open the share sheet.', variant: 'error'});
     }
-  }, [coordinates, placeLabel]);
+  }, [coordinates, placeLabel, showToast]);
 
   if (!trackingEnabled) {
     return (
@@ -78,7 +80,7 @@ function CurrentLocationPlaceCard({
     return (
       <View style={styles.cardDisabled}>
         <Text style={styles.disabledText}>
-          {loading || geocoding ? 'Locating...' : 'Waiting for GPS fix...'}
+          {loading || geocoding ? 'Finding your location...' : 'Waiting for GPS signal...'}
         </Text>
       </View>
     );

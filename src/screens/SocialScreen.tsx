@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
-import {Alert, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import BlurContainer from '../components/BlurContainer';
+import {useToast} from '../components/Toast';
 import FriendList from '../components/FriendList';
 import IncomingFriendRequestList from '../components/IncomingFriendRequestList';
 import SearchBar from '../components/SearchBar';
@@ -23,6 +24,7 @@ function SocialScreen() {
   const addFriendMutation = useAddFriend();
   const acceptFriendMutation = useAcceptFriendRequest();
   const {filters} = useSearchFilters();
+  const {showToast} = useToast();
 
   const onSubmitFriendSearch = async () => {
     await friendSearchApi.executeSearch(query, filters);
@@ -31,23 +33,26 @@ function SocialScreen() {
   const onAddFriend = async (friend: FriendSearchResult) => {
     const success = await addFriendMutation.addFriend(friend.id);
     if (!success) {
-      Alert.alert('Unable to add friend', addFriendMutation.error ?? 'Try again later.');
+      showToast('Unable to add friend', {
+        body: addFriendMutation.error ?? 'Try again later.',
+        variant: 'error',
+      });
       return;
     }
-    Alert.alert('Friend request sent', `A request was sent to ${friend.title}.`);
+    showToast('Friend request sent', {body: `A request was sent to ${friend.title}.`, variant: 'success'});
     await Promise.all([friendsApi.refetch(), incomingRequestsApi.refetch()]);
   };
 
   const onAcceptFriendRequest = async (request: IncomingFriendRequest) => {
     const success = await acceptFriendMutation.acceptFriendRequest(request.friendshipId);
     if (!success) {
-      Alert.alert(
-        'Unable to accept request',
-        acceptFriendMutation.error ?? 'Try again later.',
-      );
+      showToast('Unable to accept request', {
+        body: acceptFriendMutation.error ?? 'Try again later.',
+        variant: 'error',
+      });
       return;
     }
-    Alert.alert('Friend added', `${request.name} is now in your friends list.`);
+    showToast('Friend added', {body: `${request.name} is now in your friends list.`, variant: 'success'});
     await Promise.all([friendsApi.refetch(), incomingRequestsApi.refetch()]);
   };
 

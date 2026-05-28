@@ -11,8 +11,14 @@ import {
   getUserProfilesCollection,
 } from '../../firebase/schemas';
 import {fetchFriendProfileSyncUserIds} from '../queries/friendsWithUsers';
-import {upsertFriendshipFromRemote} from '../repositories/friendshipRepository';
-import {upsertLocationFromRemote} from '../repositories/locationRepository';
+import {
+  deleteFriendshipById,
+  upsertFriendshipFromRemote,
+} from '../repositories/friendshipRepository';
+import {
+  deleteLocationById,
+  upsertLocationFromRemote,
+} from '../repositories/locationRepository';
 import {upsertUserFromRemote} from '../repositories/userRepository';
 import {
   mapFirestoreFriendshipToLocal,
@@ -63,6 +69,7 @@ export async function startInboundSync(currentUserId: string): Promise<void> {
       onSnapshot(locationsCollection, snapshot => {
         snapshot.docChanges().forEach(change => {
           if (change.type === 'removed') {
+            deleteLocationById(change.doc.id).catch(() => null);
             return;
           }
           const location = change.doc.data();
@@ -81,6 +88,7 @@ export async function startInboundSync(currentUserId: string): Promise<void> {
       onSnapshot(asUserA, snapshot => {
         snapshot.docChanges().forEach(change => {
           if (change.type === 'removed') {
+            deleteFriendshipById(change.doc.id).catch(() => null);
             return;
           }
           upsertFriendshipFromRemote(mapFirestoreFriendshipToLocal(change.doc.data())).catch(
@@ -95,6 +103,7 @@ export async function startInboundSync(currentUserId: string): Promise<void> {
       onSnapshot(asUserB, snapshot => {
         snapshot.docChanges().forEach(change => {
           if (change.type === 'removed') {
+            deleteFriendshipById(change.doc.id).catch(() => null);
             return;
           }
           upsertFriendshipFromRemote(mapFirestoreFriendshipToLocal(change.doc.data())).catch(
